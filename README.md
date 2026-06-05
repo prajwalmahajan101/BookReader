@@ -98,8 +98,17 @@ renamed to `positions.json.migrated` once data flows.
 ## Status
 
 Phase 1 (Reader Core) + Phase 1.5 (Two-page mode) + Phase 2 (Library) +
-Phase 3 (Polish — bookmarks, sessions, phantom books, inline images)
+Phase 3 (Polish — bookmarks, sessions, phantom books, inline images) +
+Phase 4 (Library Curation — collections + wishlist overview screens)
 all live. ADRs at `docs/adr/`.
+
+### Phase 4 highlights
+
+- `C` on the library opens a **Collections** overview screen — every book
+  grouped by collection, title + path per row.
+- `W` opens a **Wishlist** overview — every phantom (TBR) entry as
+  title + author; `d` removes.
+- Both screens are integration-tested (`tests/integration/test_library_modals.py`).
 
 ### Phase 3 highlights
 
