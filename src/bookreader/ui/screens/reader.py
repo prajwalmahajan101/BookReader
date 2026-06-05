@@ -41,6 +41,7 @@ if TYPE_CHECKING:
     from textual.app import ComposeResult
 
     from bookreader.epub.chapter import Book
+    from bookreader.library.service import LibraryService
     from bookreader.state.positions import PositionStore
 
 log = get_logger(__name__)
@@ -73,11 +74,24 @@ class ReaderScreen(Screen[None]):
         positions: PositionStore,
         *,
         two_page: bool = False,
+        library: LibraryService | None = None,
+        library_book_id: int | None = None,
     ) -> None:
-        """Initialize with an opened book and the persistence store."""
+        """Initialize.
+
+        Args:
+            book: The parsed EPUB.
+            positions: Phase-1 JSON position store. Always written.
+            two_page: Start in two-page mode.
+            library: Optional library service. When set, position saves
+                are mirrored to the library DB.
+            library_book_id: Row id for *book* in the library, if any.
+        """
         super().__init__()
         self._book = book
         self._positions = positions
+        self._library = library
+        self._library_book_id = library_book_id
         self._chapter_index = 0
         self._mode: Mode = "paged" if two_page else "scroll"
 
@@ -93,12 +107,15 @@ class ReaderScreen(Screen[None]):
         yield Footer()
 
     def on_mount(self) -> None:
-        """Restore last-read position and paint the first chapter."""
+        """Restore last-read position and paint the first chapter.
+
+        Lookup order: library DB (if connected) → Phase-1 JSON store.
+        """
         self.title = self._book.title
         if self._book.authors:
             self.sub_title = " · ".join(self._book.authors)
 
-        saved = self._positions.get(self._book.identifier)
+        saved = self._load_saved_position()
         start_chapter = saved.chapter_index if saved else 0
         start_offset = saved.scroll_offset if saved else 0
         start_page = saved.page_index if saved else None
@@ -139,9 +156,7 @@ class ReaderScreen(Screen[None]):
         """
         chapter = self._book.chapters[self._chapter_index]
         self.query_one("#chapter", ChapterView).show_chapter(chapter)
-        self.query_one("#paged", PagedView).show_chapter(
-            chapter, at_last_page=scroll_to_end
-        )
+        self.query_one("#paged", PagedView).show_chapter(chapter, at_last_page=scroll_to_end)
 
         self.query_one(TocTree).set_current_chapter(self._chapter_index)
 
@@ -272,9 +287,16 @@ class ReaderScreen(Screen[None]):
         )
 
     def action_quit(self) -> None:
-        """Save position and exit the app."""
+        """Save position and return to the previous screen (or exit)."""
         self._save_position()
-        self.app.exit()
+        if len(self.app.screen_stack) > 1:
+            self.app.pop_screen()
+            # Tell the library screen to refresh counts / last-opened.
+            for screen in self.app.screen_stack:
+                if hasattr(screen, "reload"):
+                    screen.reload()  # type: ignore[attr-defined]
+        else:
+            self.app.exit()
 
     # ----- messages --------------------------------------------------------
 
@@ -331,7 +353,12 @@ class ReaderScreen(Screen[None]):
         return True
 
     def _save_position(self) -> None:
-        """Persist current chapter + scroll offset (and page if paged)."""
+        """Persist current chapter + scroll offset (and page if paged).
+
+        Writes to both the Phase-1 JSON store and the library DB (when a
+        :class:`LibraryService` is attached). Failures are logged but never
+        raised — a crash on save would lose the user's place.
+        """
         try:
             if self._mode == "paged":
                 page_index: int | None = self.query_one("#paged", PagedView).page_index
@@ -349,4 +376,22 @@ class ReaderScreen(Screen[None]):
                 page_index=page_index,
             )
         except Exception as exc:  # never crash the app on a save failure
-            log.warning("position save failed: %s", exc)
+            log.warning("position save (json) failed: %s", exc)
+        if self._library is not None and self._library_book_id is not None:
+            try:
+                self._library.save_position(
+                    book_id=self._library_book_id,
+                    chapter_index=self._chapter_index,
+                    scroll_offset=scroll_offset,
+                    page_index=page_index,
+                )
+            except Exception as exc:
+                log.warning("position save (library) failed: %s", exc)
+
+    def _load_saved_position(self) -> object | None:
+        """Find a saved position; library DB wins over the JSON store."""
+        if self._library is not None and self._library_book_id is not None:
+            lib_pos = self._library.get_position(self._library_book_id)
+            if lib_pos is not None:
+                return lib_pos
+        return self._positions.get(self._book.identifier)
