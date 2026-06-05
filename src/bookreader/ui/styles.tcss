@@ -1,18 +1,21 @@
 /* BookReader — visual design.
  *
- * Design intent (per the tui-design skill):
- *   - Reading column constrained to ~80 cells (optimum reading measure).
- *   - Generous vertical padding inside the reader; quiet, low-chrome borders.
- *   - Focused-panel border tints to accent (spatial-memory friendly: the
- *     panel that has focus is the only thing that changes).
- *   - Three themes (dark, light, sepia) tuned for long-form reading rather
- *     than dashboard density. Dark uses a Catppuccin-Mocha-ish palette,
- *     light a near-paper warm white, sepia a deeper amber.
- *   - No double-line borders, no decoration for decoration's sake.
+ * Colours come from Textual's theme variables ($foreground, $background,
+ * $surface, $panel, $boost, $primary, $accent, $foreground-muted, …).
+ * Each registered theme in `app.py` supplies its own values so this file
+ * stays per-theme-free.
+ *
+ * Per tui-design:
+ *   - Reading column ≤ 84 cells (optimum reading measure).
+ *   - Focused-panel border tints to `$accent`.
+ *   - Quiet borders by default ($boost), accent only for focus.
+ *   - No double-line borders; no decoration for decoration's sake.
  */
 
 Screen {
     layout: vertical;
+    background: $background;
+    color: $foreground;
 }
 
 #content {
@@ -25,6 +28,8 @@ Screen {
     min-width: 24;
     max-width: 42;
     padding: 1 2;
+    background: $panel;
+    color: $foreground;
     border-right: solid $boost;
 }
 
@@ -32,24 +37,26 @@ Screen {
     display: none;
 }
 
+#toc:focus-within {
+    border-right: solid $accent;
+}
+
 #reader {
     width: 1fr;
     padding: 1 2;
+    background: $background;
+    color: $foreground;
+    align-horizontal: center;
 }
 
-/* Centered, width-capped reading column so lines don't get unreadably long
- * on wide terminals. Use 100% + max-width so the column fills narrow
- * terminals but caps at the optimum reading measure on wide ones. */
+/* Centered, width-capped reading column. 100% on narrow terminals,
+ * capped at 84 cells on wide ones. */
 #reading-column {
     width: 100%;
     max-width: 84;
     height: auto;
     margin: 1 0 2 0;
     padding: 0 2;
-}
-
-#reader {
-    align-horizontal: center;
 }
 
 ChapterView {
@@ -69,10 +76,8 @@ ChapterView.-hidden, PagedView.-hidden {
 StatusBar {
     height: 1;
     padding: 0 2;
-}
-
-Footer > .footer--key {
-    text-style: bold;
+    background: $panel;
+    color: $foreground-muted;
 }
 
 /* ---------- Library screen ---------- */
@@ -87,25 +92,37 @@ Footer > .footer--key {
     min-width: 22;
     max-width: 38;
     padding: 1 1;
+    background: $panel;
+    color: $foreground;
     border-right: solid $boost;
+}
+
+#library-sidebar:focus-within {
+    border-right: solid $accent;
 }
 
 #library-table {
     width: 1fr;
     padding: 0 1;
+    background: $background;
+    color: $foreground;
 }
 
 #library-status {
     height: 1;
     padding: 0 2;
+    background: $panel;
+    color: $foreground-muted;
 }
 
-/* Add-book modal */
+/* ---------- Add-book modal ---------- */
+
 _AddBookPrompt {
     align: center middle;
 }
 _AddBookPrompt > Static {
     margin-bottom: 1;
+    color: $foreground;
 }
 #add-prompt-input {
     width: 60;
@@ -116,95 +133,4 @@ _AddBookPrompt > Static {
 }
 #add-prompt-buttons Button {
     margin: 0 1;
-}
-
-/* ────────────── Dark — Catppuccin-Mocha-inspired ────────────── */
-App.-theme-dark {
-    background: #1e1e2e;
-    color: #cdd6f4;
-}
-App.-theme-dark Screen { background: #1e1e2e; }
-App.-theme-dark #toc {
-    background: #181825;
-    color: #cdd6f4;
-    border-right: solid #313244;
-}
-App.-theme-dark #toc:focus-within {
-    border-right: solid #89b4fa;
-}
-App.-theme-dark #reader { background: #1e1e2e; color: #cdd6f4; }
-App.-theme-dark #reader:focus-within { }
-App.-theme-dark Header { background: #181825; color: #cdd6f4; }
-App.-theme-dark Footer { background: #181825; color: #6c7086; }
-App.-theme-dark Footer > .footer--key { color: #89b4fa; }
-App.-theme-dark StatusBar { background: #181825; color: #a6adc8; }
-App.-theme-dark TocTree > .option-list--option-highlighted {
-    background: #313244;
-    color: #cdd6f4;
-    text-style: bold;
-}
-App.-theme-dark TocTree:focus > .option-list--option-highlighted {
-    background: #89b4fa 25%;
-    color: #cdd6f4;
-    text-style: bold;
-}
-
-/* ────────────── Light — warm paper ────────────── */
-App.-theme-light {
-    background: #fbf9f1;
-    color: #2a2a2a;
-}
-App.-theme-light Screen { background: #fbf9f1; }
-App.-theme-light #toc {
-    background: #f3efe1;
-    color: #2a2a2a;
-    border-right: solid #d8d2c0;
-}
-App.-theme-light #toc:focus-within {
-    border-right: solid #2563eb;
-}
-App.-theme-light #reader { background: #fbf9f1; color: #2a2a2a; }
-App.-theme-light Header { background: #f3efe1; color: #2a2a2a; }
-App.-theme-light Footer { background: #f3efe1; color: #5c5b58; }
-App.-theme-light Footer > .footer--key { color: #2563eb; }
-App.-theme-light StatusBar { background: #f3efe1; color: #5c5b58; }
-App.-theme-light TocTree > .option-list--option-highlighted {
-    background: #e7e1ce;
-    color: #2a2a2a;
-    text-style: bold;
-}
-App.-theme-light TocTree:focus > .option-list--option-highlighted {
-    background: #2563eb 22%;
-    color: #2a2a2a;
-    text-style: bold;
-}
-
-/* ────────────── Sepia — amber reading mode ────────────── */
-App.-theme-sepia {
-    background: #f1e3c2;
-    color: #3b2a14;
-}
-App.-theme-sepia Screen { background: #f1e3c2; }
-App.-theme-sepia #toc {
-    background: #e8d5a4;
-    color: #3b2a14;
-    border-right: solid #c6ad77;
-}
-App.-theme-sepia #toc:focus-within {
-    border-right: solid #8a4b08;
-}
-App.-theme-sepia #reader { background: #f1e3c2; color: #3b2a14; }
-App.-theme-sepia Header { background: #e8d5a4; color: #3b2a14; }
-App.-theme-sepia Footer { background: #e8d5a4; color: #7a6536; }
-App.-theme-sepia Footer > .footer--key { color: #8a4b08; }
-App.-theme-sepia StatusBar { background: #e8d5a4; color: #7a6536; }
-App.-theme-sepia TocTree > .option-list--option-highlighted {
-    background: #dcc593;
-    color: #3b2a14;
-    text-style: bold;
-}
-App.-theme-sepia TocTree:focus > .option-list--option-highlighted {
-    background: #8a4b08 22%;
-    color: #3b2a14;
-    text-style: bold;
 }

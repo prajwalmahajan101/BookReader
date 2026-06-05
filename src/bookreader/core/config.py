@@ -12,7 +12,10 @@ from typing import Literal
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-Theme = Literal["dark", "light", "sepia"]
+# Short, human-friendly theme name. The Textual theme id is
+# ``bookreader-<short>``; the mapping happens in :mod:`bookreader.ui.app`.
+ThemeName = Literal["dark", "light", "sepia"]
+Theme = ThemeName  # backwards-compatible alias
 
 
 class Settings(BaseSettings):
@@ -34,7 +37,7 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    theme: Theme = "dark"
+    theme: ThemeName = "dark"
     line_scroll: int = Field(default=1, ge=1, le=10)
     page_scroll_pct: int = Field(default=90, ge=10, le=100)
     show_toc_default: bool = True

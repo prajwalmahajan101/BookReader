@@ -8,7 +8,6 @@ strip clean.
 
 from __future__ import annotations
 
-from rich.text import Text
 from textual.widgets import Static
 
 _BAR_WIDTH = 14
@@ -48,11 +47,14 @@ class StatusBar(Static):
         bar = _FILLED * filled + _EMPTY * (_BAR_WIDTH - filled)
         pct = round(clamped * 100)
 
-        line = Text()
-        line.append(chapter_title, style="bold")
-        line.append("  ·  ", style="dim")
-        line.append(f"{chapter_index + 1}/{chapter_count}", style="dim")
-        line.append("  ·  ", style="dim")
-        line.append(bar, style="bold")
-        line.append(f"  {pct:>3d}%", style="dim")
-        self.update(line)
+        # Use Textual content markup so colours follow the active theme
+        # instead of hard-coded styles. `$accent` and `$foreground-muted`
+        # resolve from the registered theme.
+        self.update(
+            f"[bold]{chapter_title}[/]"
+            f"  [$foreground-muted]·[/]  "
+            f"[$foreground-muted]{chapter_index + 1}/{chapter_count}[/]"
+            f"  [$foreground-muted]·[/]  "
+            f"[$accent]{bar}[/]"
+            f"  [$foreground-muted]{pct:>3d}%[/]"
+        )
