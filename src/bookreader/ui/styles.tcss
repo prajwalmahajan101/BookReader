@@ -1,0 +1,141 @@
+/* BookReader styles.
+ *
+ * Three themes live on the App as classes: `-theme-dark`, `-theme-light`,
+ * `-theme-sepia`. Each theme block overrides the same set of selectors so
+ * the rest of the styling stays semantic.
+ *
+ * Focus indicator: border color shifts to the accent color on the focused
+ * panel (`:focus-within`), per TUI convention.
+ */
+
+Screen {
+    layout: horizontal;
+}
+
+#toc {
+    width: 32;
+    min-width: 24;
+    max-width: 50;
+    padding: 1 1;
+    border-right: solid $boost;
+}
+
+#toc.-hidden {
+    display: none;
+}
+
+#reader {
+    width: 1fr;
+    padding: 1 4;
+}
+
+ChapterView {
+    width: 100%;
+    height: auto;
+}
+
+Footer > .footer--key {
+    text-style: bold;
+}
+
+/* ---------- Dark theme (default) ---------- */
+App.-theme-dark {
+    background: #11141a;
+    color: #d5d8de;
+}
+App.-theme-dark #toc {
+    background: #181c24;
+    color: #d5d8de;
+    border-right: solid #2a2f3a;
+}
+App.-theme-dark #toc:focus-within {
+    border-right: solid #7dd3fc;
+}
+App.-theme-dark #reader {
+    background: #11141a;
+    color: #d5d8de;
+}
+App.-theme-dark Header {
+    background: #181c24;
+    color: #d5d8de;
+}
+App.-theme-dark Footer {
+    background: #181c24;
+    color: #6b7280;
+}
+App.-theme-dark Footer > .footer--key {
+    color: #7dd3fc;
+}
+App.-theme-dark TocTree > .tree--cursor {
+    background: #7dd3fc 25%;
+    color: #d5d8de;
+    text-style: bold;
+}
+
+/* ---------- Light theme ---------- */
+App.-theme-light {
+    background: #fbfbf7;
+    color: #1f2328;
+}
+App.-theme-light #toc {
+    background: #f1f0eb;
+    color: #1f2328;
+    border-right: solid #d0d7de;
+}
+App.-theme-light #toc:focus-within {
+    border-right: solid #0969da;
+}
+App.-theme-light #reader {
+    background: #fbfbf7;
+    color: #1f2328;
+}
+App.-theme-light Header {
+    background: #f1f0eb;
+    color: #1f2328;
+}
+App.-theme-light Footer {
+    background: #f1f0eb;
+    color: #6e7781;
+}
+App.-theme-light Footer > .footer--key {
+    color: #0969da;
+}
+App.-theme-light TocTree > .tree--cursor {
+    background: #0969da 25%;
+    color: #1f2328;
+    text-style: bold;
+}
+
+/* ---------- Sepia theme ---------- */
+App.-theme-sepia {
+    background: #f5ecd9;
+    color: #3a2d1a;
+}
+App.-theme-sepia #toc {
+    background: #ede2c4;
+    color: #3a2d1a;
+    border-right: solid #c9b58a;
+}
+App.-theme-sepia #toc:focus-within {
+    border-right: solid #8a4b08;
+}
+App.-theme-sepia #reader {
+    background: #f5ecd9;
+    color: #3a2d1a;
+}
+App.-theme-sepia Header {
+    background: #ede2c4;
+    color: #3a2d1a;
+}
+App.-theme-sepia Footer {
+    background: #ede2c4;
+    color: #7a6a52;
+}
+App.-theme-sepia Footer > .footer--key {
+    color: #8a4b08;
+}
+App.-theme-sepia TocTree > .tree--cursor {
+    background: #8a4b08 25%;
+    color: #3a2d1a;
+    text-style: bold;
+}
