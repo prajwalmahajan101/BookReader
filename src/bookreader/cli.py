@@ -93,17 +93,66 @@ def open_cmd(book: Path, *, no_library: bool) -> None:
 
 
 @main.command("add")
-@click.argument("book", type=click.Path(exists=True, dir_okay=False, path_type=Path))
-def add_cmd(book: Path) -> None:
-    """Add BOOK to the library without opening it."""
+@click.argument("book", required=False, type=click.Path(path_type=Path))
+@click.option(
+    "--wishlist",
+    is_flag=True,
+    help="Add a wishlist (TBR) entry by title/author only — no file required.",
+)
+@click.option("--title", help="Title for a wishlist entry.")
+@click.option("--author", multiple=True, help="Author name; pass repeatedly for multiple.")
+def add_cmd(
+    book: Path | None,
+    *,
+    wishlist: bool,
+    title: str | None,
+    author: tuple[str, ...],
+) -> None:
+    """Add a book to the library.
+
+    Usage:
+        bookreader add PATH                          (real EPUB)
+        bookreader add --wishlist --title "T" --author "A"
+    """
     service = LibraryService()
     try:
+        if wishlist:
+            if not title:
+                click.echo("error: --wishlist requires --title", err=True)
+                sys.exit(2)
+            entry = service.add_wishlist(title=title, authors=author)
+            click.echo(f"added (wishlist): {entry.title} [#{entry.id}]")
+            return
+
+        if book is None:
+            click.echo("error: pass a path or use --wishlist --title …", err=True)
+            sys.exit(2)
+        if not book.is_file():
+            click.echo(f"error: {book}: not a file", err=True)
+            sys.exit(2)
         try:
             lib_book = service.add_book(book)
         except BookReaderError as exc:
             click.echo(f"error: {exc}", err=True)
             sys.exit(2)
         click.echo(f"added: {lib_book.title} [{lib_book.identifier}]")
+    finally:
+        service.close()
+
+
+@main.command("attach")
+@click.argument("book_id", type=int)
+@click.argument("path", type=click.Path(exists=True, dir_okay=False, path_type=Path))
+def attach_cmd(book_id: int, path: Path) -> None:
+    """Attach an EPUB to a phantom (wishlist) book."""
+    service = LibraryService()
+    try:
+        try:
+            book = service.attach_epub(book_id, path)
+        except BookReaderError as exc:
+            click.echo(f"error: {exc}", err=True)
+            sys.exit(2)
+        click.echo(f"attached: {book.title} → {book.file_path}")
     finally:
         service.close()
 
@@ -118,15 +167,20 @@ def list_cmd() -> None:
             click.echo("(library is empty)")
             return
         for b in books:
-            mark = "✓" if b.completed_at else " "
+            if b.is_phantom:
+                mark = "◌"
+            elif b.completed_at:
+                mark = "✓"
+            else:
+                mark = " "
             rating = f"★{b.rating}" if b.rating else "  "
             authors = ", ".join(b.authors) or "—"
-            click.echo(f"{mark} {rating}  {b.title}  —  {authors}")
+            click.echo(f"{mark} {rating}  {b.title}  —  {authors}  [#{b.id}]")
     finally:
         service.close()
 
 
-_SUBCOMMANDS = {"open", "add", "list"}
+_SUBCOMMANDS = {"open", "add", "list", "attach", "stats"}
 
 
 def _rewrite_path_sugar(argv: list[str]) -> list[str]:
