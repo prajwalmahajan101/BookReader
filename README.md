@@ -64,6 +64,8 @@ going back from the start flows into the previous chapter's end.
 | Enter / `i`        | Open the highlighted book             |
 | `a`                | Add a book (prompts for path)         |
 | `A` (shift+a)      | Add a wishlist entry (title + author) |
+| `C` (shift+c)      | Browse all books grouped by collection (title + path) |
+| `W` (shift+w)      | Browse wishlist (title + author); `d` removes |
 | `d` / Delete       | Remove the highlighted book           |
 | `c`                | Toggle completion                     |
 | `1` … `5`          | Set rating; `0` clears                |
