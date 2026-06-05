@@ -1,22 +1,30 @@
-/* BookReader styles.
+/* BookReader — visual design.
  *
- * Three themes live on the App as classes: `-theme-dark`, `-theme-light`,
- * `-theme-sepia`. Each theme block overrides the same set of selectors so
- * the rest of the styling stays semantic.
- *
- * Focus indicator: border color shifts to the accent color on the focused
- * panel (`:focus-within`), per TUI convention.
+ * Design intent (per the tui-design skill):
+ *   - Reading column constrained to ~80 cells (optimum reading measure).
+ *   - Generous vertical padding inside the reader; quiet, low-chrome borders.
+ *   - Focused-panel border tints to accent (spatial-memory friendly: the
+ *     panel that has focus is the only thing that changes).
+ *   - Three themes (dark, light, sepia) tuned for long-form reading rather
+ *     than dashboard density. Dark uses a Catppuccin-Mocha-ish palette,
+ *     light a near-paper warm white, sepia a deeper amber.
+ *   - No double-line borders, no decoration for decoration's sake.
  */
 
 Screen {
+    layout: vertical;
+}
+
+#content {
     layout: horizontal;
+    height: 1fr;
 }
 
 #toc {
-    width: 32;
+    width: 30;
     min-width: 24;
-    max-width: 50;
-    padding: 1 1;
+    max-width: 42;
+    padding: 1 2;
     border-right: solid $boost;
 }
 
@@ -26,7 +34,22 @@ Screen {
 
 #reader {
     width: 1fr;
-    padding: 1 4;
+    padding: 1 2;
+}
+
+/* Centered, width-capped reading column so lines don't get unreadably long
+ * on wide terminals. 'auto' on width plus 'align: center top' on the parent
+ * does the centering; max-width caps the measure. */
+#reading-column {
+    width: auto;
+    max-width: 84;
+    height: auto;
+    margin: 1 0 2 0;
+    padding: 0 2;
+}
+
+#reader {
+    align: center top;
 }
 
 ChapterView {
@@ -34,108 +57,102 @@ ChapterView {
     height: auto;
 }
 
+StatusBar {
+    height: 1;
+    padding: 0 2;
+}
+
 Footer > .footer--key {
     text-style: bold;
 }
 
-/* ---------- Dark theme (default) ---------- */
+/* ────────────── Dark — Catppuccin-Mocha-inspired ────────────── */
 App.-theme-dark {
-    background: #11141a;
-    color: #d5d8de;
+    background: #1e1e2e;
+    color: #cdd6f4;
 }
+App.-theme-dark Screen { background: #1e1e2e; }
 App.-theme-dark #toc {
-    background: #181c24;
-    color: #d5d8de;
-    border-right: solid #2a2f3a;
+    background: #181825;
+    color: #cdd6f4;
+    border-right: solid #313244;
 }
 App.-theme-dark #toc:focus-within {
-    border-right: solid #7dd3fc;
+    border-right: solid #89b4fa;
 }
-App.-theme-dark #reader {
-    background: #11141a;
-    color: #d5d8de;
+App.-theme-dark #reader { background: #1e1e2e; color: #cdd6f4; }
+App.-theme-dark #reader:focus-within { }
+App.-theme-dark Header { background: #181825; color: #cdd6f4; }
+App.-theme-dark Footer { background: #181825; color: #6c7086; }
+App.-theme-dark Footer > .footer--key { color: #89b4fa; }
+App.-theme-dark StatusBar { background: #181825; color: #a6adc8; }
+App.-theme-dark TocTree > .option-list--option-highlighted {
+    background: #313244;
+    color: #cdd6f4;
+    text-style: bold;
 }
-App.-theme-dark Header {
-    background: #181c24;
-    color: #d5d8de;
-}
-App.-theme-dark Footer {
-    background: #181c24;
-    color: #6b7280;
-}
-App.-theme-dark Footer > .footer--key {
-    color: #7dd3fc;
-}
-App.-theme-dark TocTree > .tree--cursor {
-    background: #7dd3fc 25%;
-    color: #d5d8de;
+App.-theme-dark TocTree:focus > .option-list--option-highlighted {
+    background: #89b4fa 25%;
+    color: #cdd6f4;
     text-style: bold;
 }
 
-/* ---------- Light theme ---------- */
+/* ────────────── Light — warm paper ────────────── */
 App.-theme-light {
-    background: #fbfbf7;
-    color: #1f2328;
+    background: #fbf9f1;
+    color: #2a2a2a;
 }
+App.-theme-light Screen { background: #fbf9f1; }
 App.-theme-light #toc {
-    background: #f1f0eb;
-    color: #1f2328;
-    border-right: solid #d0d7de;
+    background: #f3efe1;
+    color: #2a2a2a;
+    border-right: solid #d8d2c0;
 }
 App.-theme-light #toc:focus-within {
-    border-right: solid #0969da;
+    border-right: solid #2563eb;
 }
-App.-theme-light #reader {
-    background: #fbfbf7;
-    color: #1f2328;
+App.-theme-light #reader { background: #fbf9f1; color: #2a2a2a; }
+App.-theme-light Header { background: #f3efe1; color: #2a2a2a; }
+App.-theme-light Footer { background: #f3efe1; color: #5c5b58; }
+App.-theme-light Footer > .footer--key { color: #2563eb; }
+App.-theme-light StatusBar { background: #f3efe1; color: #5c5b58; }
+App.-theme-light TocTree > .option-list--option-highlighted {
+    background: #e7e1ce;
+    color: #2a2a2a;
+    text-style: bold;
 }
-App.-theme-light Header {
-    background: #f1f0eb;
-    color: #1f2328;
-}
-App.-theme-light Footer {
-    background: #f1f0eb;
-    color: #6e7781;
-}
-App.-theme-light Footer > .footer--key {
-    color: #0969da;
-}
-App.-theme-light TocTree > .tree--cursor {
-    background: #0969da 25%;
-    color: #1f2328;
+App.-theme-light TocTree:focus > .option-list--option-highlighted {
+    background: #2563eb 22%;
+    color: #2a2a2a;
     text-style: bold;
 }
 
-/* ---------- Sepia theme ---------- */
+/* ────────────── Sepia — amber reading mode ────────────── */
 App.-theme-sepia {
-    background: #f5ecd9;
-    color: #3a2d1a;
+    background: #f1e3c2;
+    color: #3b2a14;
 }
+App.-theme-sepia Screen { background: #f1e3c2; }
 App.-theme-sepia #toc {
-    background: #ede2c4;
-    color: #3a2d1a;
-    border-right: solid #c9b58a;
+    background: #e8d5a4;
+    color: #3b2a14;
+    border-right: solid #c6ad77;
 }
 App.-theme-sepia #toc:focus-within {
     border-right: solid #8a4b08;
 }
-App.-theme-sepia #reader {
-    background: #f5ecd9;
-    color: #3a2d1a;
+App.-theme-sepia #reader { background: #f1e3c2; color: #3b2a14; }
+App.-theme-sepia Header { background: #e8d5a4; color: #3b2a14; }
+App.-theme-sepia Footer { background: #e8d5a4; color: #7a6536; }
+App.-theme-sepia Footer > .footer--key { color: #8a4b08; }
+App.-theme-sepia StatusBar { background: #e8d5a4; color: #7a6536; }
+App.-theme-sepia TocTree > .option-list--option-highlighted {
+    background: #dcc593;
+    color: #3b2a14;
+    text-style: bold;
 }
-App.-theme-sepia Header {
-    background: #ede2c4;
-    color: #3a2d1a;
-}
-App.-theme-sepia Footer {
-    background: #ede2c4;
-    color: #7a6a52;
-}
-App.-theme-sepia Footer > .footer--key {
-    color: #8a4b08;
-}
-App.-theme-sepia TocTree > .tree--cursor {
-    background: #8a4b08 25%;
-    color: #3a2d1a;
+App.-theme-sepia TocTree:focus > .option-list--option-highlighted {
+    background: #8a4b08 22%;
+    color: #3b2a14;
     text-style: bold;
 }
