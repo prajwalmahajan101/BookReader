@@ -38,10 +38,10 @@ Screen {
 }
 
 /* Centered, width-capped reading column so lines don't get unreadably long
- * on wide terminals. 'auto' on width plus 'align: center top' on the parent
- * does the centering; max-width caps the measure. */
+ * on wide terminals. Use 100% + max-width so the column fills narrow
+ * terminals but caps at the optimum reading measure on wide ones. */
 #reading-column {
-    width: auto;
+    width: 100%;
     max-width: 84;
     height: auto;
     margin: 1 0 2 0;
@@ -49,7 +49,7 @@ Screen {
 }
 
 #reader {
-    align: center top;
+    align-horizontal: center;
 }
 
 ChapterView {

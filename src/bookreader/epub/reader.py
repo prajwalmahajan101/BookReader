@@ -94,7 +94,7 @@ def _chapter_title(html: str, index: int) -> str:
     """Best-effort title extraction from the first heading in the chapter."""
     from bs4 import BeautifulSoup
 
-    soup = BeautifulSoup(html, "lxml-xml" if html.lstrip().startswith("<?xml") else "lxml")
+    soup = BeautifulSoup(html, "lxml")
     for tag in ("h1", "h2", "h3", "title"):
         node = soup.find(tag)
         if node and node.get_text(strip=True):
