@@ -13,3 +13,9 @@ reader from Phase 1.
 """
 
 from __future__ import annotations
+
+from bookreader.library.database import Database
+from bookreader.library.migrate import migrate_positions_json
+from bookreader.library.service import LibraryService
+
+__all__ = ["Database", "LibraryService", "migrate_positions_json"]

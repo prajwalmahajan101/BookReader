@@ -40,13 +40,21 @@ class LibraryService:
     """
 
     def __init__(self, db: Database | None = None) -> None:
-        """Open the library and seed default collections on first run."""
+        """Open the library and seed default collections on first run.
+
+        Also runs the Phase-1 ``positions.json`` migrator opportunistically;
+        a missing or already-migrated file is a no-op.
+        """
         self._db = db or Database()
         self._books = BookRepo(self._db)
         self._collections = CollectionRepo(self._db)
         self._positions = PositionRepo(self._db)
         self._bookmarks = BookmarkRepo(self._db)
         self._seed_default_collections()
+        # Late import — ``migrate_positions_json`` imports from this module.
+        from bookreader.library.migrate import migrate_positions_json
+
+        migrate_positions_json(self)
 
     def close(self) -> None:
         """Close the underlying database."""
