@@ -80,8 +80,14 @@ class ReaderScreen(Screen[None]):
         if start_offset:
             self.call_after_refresh(self._restore_scroll, start_offset)
 
-    def _paint_current_chapter(self) -> None:
-        """Render the current chapter into the chapter view."""
+    def _paint_current_chapter(self, *, scroll_to_end: bool = False) -> None:
+        """Render the current chapter into the chapter view.
+
+        Args:
+            scroll_to_end: If true, jump to the bottom after rendering.
+                Used when entering a chapter from the next one via ``b`` or
+                ``k`` at the chapter start.
+        """
         chapter = self._book.chapters[self._chapter_index]
         view = self.query_one("#chapter", ChapterView)
         view.show_chapter(chapter)
@@ -91,7 +97,10 @@ class ReaderScreen(Screen[None]):
             f"[{self._chapter_index + 1}/{len(self._book.chapters)}]"
         )
         scroller = self.query_one("#reader", VerticalScroll)
-        scroller.scroll_home(animate=False)
+        if scroll_to_end:
+            self.call_after_refresh(scroller.scroll_end, animate=False)
+        else:
+            scroller.scroll_home(animate=False)
 
     def _restore_scroll(self, offset: int) -> None:
         """Apply a previously-saved scroll offset (lines from top)."""
@@ -101,12 +110,23 @@ class ReaderScreen(Screen[None]):
     # ----- actions ---------------------------------------------------------
 
     def action_scroll_line(self, delta: int) -> None:
-        """Scroll the reader pane by *delta* lines."""
-        scroller = self.query_one("#reader", VerticalScroll)
-        scroller.scroll_relative(y=delta, animate=False)
+        """Scroll one line; flow into the adjacent chapter at the boundary.
+
+        Args:
+            delta: ``+1`` for ``j``/Down, ``-1`` for ``k``/Up.
+        """
+        if self._at_boundary(delta) and self._flow_to_adjacent_chapter(delta):
+            return
+        self.query_one("#reader", VerticalScroll).scroll_relative(y=delta, animate=False)
 
     def action_scroll_page(self, direction: int) -> None:
-        """Scroll the reader pane by ~90% of its viewport height."""
+        """Scroll one page; flow into the adjacent chapter at the boundary.
+
+        Args:
+            direction: ``+1`` for Space/PageDown, ``-1`` for ``b``/PageUp.
+        """
+        if self._at_boundary(direction) and self._flow_to_adjacent_chapter(direction):
+            return
         scroller = self.query_one("#reader", VerticalScroll)
         page = max(1, int(scroller.size.height * 0.9))
         scroller.scroll_relative(y=direction * page, animate=False)
@@ -161,12 +181,47 @@ class ReaderScreen(Screen[None]):
 
     # ----- helpers ---------------------------------------------------------
 
-    def _jump_to(self, index: int) -> None:
-        """Switch to chapter *index* if it is within bounds."""
+    def _jump_to(self, index: int, *, scroll_to_end: bool = False) -> None:
+        """Switch to chapter *index* if it is within bounds.
+
+        Args:
+            index: Target spine index.
+            scroll_to_end: Start at the bottom rather than the top (used
+                when entering a chapter from the next one).
+        """
         if 0 <= index < len(self._book.chapters) and index != self._chapter_index:
             self._save_position()
             self._chapter_index = index
-            self._paint_current_chapter()
+            self._paint_current_chapter(scroll_to_end=scroll_to_end)
+
+    def _at_boundary(self, direction: int) -> bool:
+        """Return ``True`` if a scroll in *direction* has nowhere to go."""
+        scroller = self.query_one("#reader", VerticalScroll)
+        if direction > 0:
+            return scroller.scroll_y >= scroller.max_scroll_y
+        return scroller.scroll_y <= 0
+
+    def _flow_to_adjacent_chapter(self, direction: int) -> bool:
+        """Move into the next/previous chapter when sitting at a boundary.
+
+        Args:
+            direction: ``+1`` to flow forward into the next chapter (landing
+                at the top), ``-1`` to flow backward (landing at the bottom).
+
+        Returns:
+            ``True`` if a chapter switch happened, ``False`` if the book is
+            already at the first or last chapter.
+        """
+        target = self._chapter_index + (1 if direction > 0 else -1)
+        if not 0 <= target < len(self._book.chapters):
+            return False
+        self._jump_to(target, scroll_to_end=direction < 0)
+        chapter = self._book.chapters[target]
+        self.notify(
+            f"{chapter.title}  [{target + 1}/{len(self._book.chapters)}]",
+            timeout=2,
+        )
+        return True
 
     def _save_position(self) -> None:
         """Persist current chapter + scroll offset."""
