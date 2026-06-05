@@ -133,17 +133,24 @@ class ReaderScreen(Screen[None]):
     # ----- mode helpers ----------------------------------------------------
 
     def _apply_mode_classes(self) -> None:
-        """Toggle visibility classes on the two reader widgets."""
+        """Toggle visibility + width classes for the active mode.
+
+        Two-page mode widens the reading column (`-paged`) so the spread
+        gets ~140 cells instead of the single-column 84-cell cap.
+        """
         paged = self.query_one("#paged", PagedView)
         chapter = self.query_one("#chapter", ChapterView)
         scroller = self.query_one("#reader", VerticalScroll)
+        column = self.query_one("#reading-column")
         if self._mode == "paged":
             chapter.add_class("-hidden")
             paged.remove_class("-hidden")
+            column.add_class("-paged")
             scroller.can_focus = False
         else:
             paged.add_class("-hidden")
             chapter.remove_class("-hidden")
+            column.remove_class("-paged")
             scroller.can_focus = True
 
     def _paint_current_chapter(self, *, scroll_to_end: bool = False) -> None:
