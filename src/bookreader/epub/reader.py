@@ -63,19 +63,27 @@ def open_book(path: Path) -> Book:
 
 
 def _extract_chapters(book: epub.EpubBook) -> list[Chapter]:
-    """Walk the spine in order and build :class:`Chapter` records."""
+    """Walk the spine in order and build :class:`Chapter` records.
+
+    Skips the ``nav`` document and any item marked with ``properties=nav`` —
+    EPUB 3 navigation isn't reading content.
+    """
     chapters: list[Chapter] = []
-    for index, (item_id, _linear) in enumerate(book.spine):
+    for item_id, _linear in book.spine:
+        if item_id == "nav":
+            continue
         item = book.get_item_with_id(item_id)
         if item is None or item.get_type() != ITEM_DOCUMENT:
+            continue
+        if "nav" in (item.properties or []):
             continue
         html = item.get_content().decode("utf-8", errors="replace")
         chapters.append(
             Chapter(
-                index=index,
+                index=len(chapters),
                 item_id=item_id,
                 href=item.get_name(),
-                title=_chapter_title(html, index),
+                title=_chapter_title(html, len(chapters)),
                 html=html,
             )
         )
@@ -86,7 +94,7 @@ def _chapter_title(html: str, index: int) -> str:
     """Best-effort title extraction from the first heading in the chapter."""
     from bs4 import BeautifulSoup
 
-    soup = BeautifulSoup(html, "lxml")
+    soup = BeautifulSoup(html, "lxml-xml" if html.lstrip().startswith("<?xml") else "lxml")
     for tag in ("h1", "h2", "h3", "title"):
         node = soup.find(tag)
         if node and node.get_text(strip=True):

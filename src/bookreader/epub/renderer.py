@@ -158,5 +158,3 @@ def _ensure_paragraph_break(out: Text) -> None:
         out.append("\n")
     else:
         out.append("\n\n")
-
-

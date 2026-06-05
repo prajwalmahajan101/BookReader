@@ -35,10 +35,7 @@ class TocTree(OptionList):
     def __init__(self, entries: tuple[TocEntry, ...]) -> None:
         """Initialize with the book's flattened TOC."""
         self._entries = entries
-        options = [
-            Option(self._format(entry), id=str(i))
-            for i, entry in enumerate(entries)
-        ]
+        options = [Option(self._format(entry), id=str(i)) for i, entry in enumerate(entries)]
         super().__init__(*options, id="toc-list")
 
     @staticmethod
@@ -48,9 +45,7 @@ class TocTree(OptionList):
         bullet = "• " if entry.depth == 0 else ""
         return f"{indent}{bullet}{entry.label}"
 
-    def on_option_list_option_selected(
-        self, event: OptionList.OptionSelected
-    ) -> None:
+    def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
         """Translate the option event into a :class:`Selected` message."""
         if event.option.id is None:
             return
