@@ -15,7 +15,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from rich.console import Console
-from rich.table import Table
 from rich.text import Text
 from textual.widgets import Static
 
@@ -36,7 +35,11 @@ class PagedView(Static):
         super().__init__(id=id)
         self._chapter_text: Text = Text()
         self._page_index: int = 0
-        self._cached_pages: tuple[Text, ...] = ()
+        # Cache holds the pre-wrapped lines (one Lines per chapter render),
+        # parametrised by the (width, height) they were wrapped for.
+        self._cached_lines: list[Text] = []
+        self._cached_col_width: int = 0
+        self._cached_page_height: int = 0
         self._cached_width: int = 0
         self._cached_height: int = 0
 
@@ -51,16 +54,22 @@ class PagedView(Static):
                 flowing backward from the next chapter).
         """
         self._chapter_text = render_chapter(chapter)
-        self._cached_pages = ()
-        self._cached_width = 0
-        self._cached_height = 0
+        self._invalidate_cache()
         if at_last_page:
-            pages = self._paginate()
-            spreads = max(1, (len(pages) + 1) // 2)
+            total = self.total_pages()
+            spreads = max(1, (total + 1) // 2)
             self._page_index = (spreads - 1) * 2
         else:
             self._page_index = 0
         self.refresh(layout=True)
+
+    def _invalidate_cache(self) -> None:
+        """Drop any cached wrapping so the next render redoes the math."""
+        self._cached_lines = []
+        self._cached_col_width = 0
+        self._cached_page_height = 0
+        self._cached_width = 0
+        self._cached_height = 0
 
     @property
     def page_index(self) -> int:
@@ -70,13 +79,17 @@ class PagedView(Static):
     def set_page_index(self, value: int) -> None:
         """Move directly to *value* (clamped, snapped to a spread)."""
         snapped = max(0, value - (value % 2))
-        last = max(0, (len(self._paginate()) - 1) // 2 * 2)
+        last = max(0, (self.total_pages() - 1) // 2 * 2)
         self._page_index = min(snapped, last)
         self.refresh()
 
     def total_pages(self) -> int:
         """Return the number of pages in the current chapter."""
-        return len(self._paginate())
+        self._ensure_wrap()
+        ph = self._cached_page_height
+        if ph <= 0:
+            return 0
+        return (len(self._cached_lines) + ph - 1) // ph
 
     def progress(self) -> float:
         """Return chapter progress as a fraction in ``[0.0, 1.0]``."""
@@ -89,8 +102,7 @@ class PagedView(Static):
 
     def next_spread(self) -> bool:
         """Advance by one spread (two pages). Returns False at the end."""
-        pages = self._paginate()
-        if self._page_index + 2 >= len(pages):
+        if self._page_index + 2 >= self.total_pages():
             return False
         self._page_index += 2
         self.refresh()
@@ -110,67 +122,90 @@ class PagedView(Static):
 
     def at_end(self) -> bool:
         """True if the next spread would go past the chapter."""
-        return self._page_index + 2 >= len(self._paginate())
+        return self._page_index + 2 >= self.total_pages()
 
     # ----- rendering -------------------------------------------------------
 
     def render(self) -> RenderableType:
-        """Build a two-column Table.grid with the current spread."""
-        pages = self._paginate()
-        if not pages or self.size.width == 0:
+        """Stitch the current spread line-by-line into a single :class:`Text`.
+
+        Building the output explicitly (rather than handing two cells to a
+        Rich ``Table.grid``) guarantees both columns are wrapped to exactly
+        ``col_w`` cells — Rich never gets the chance to re-wrap inside a
+        cell and produce uneven columns.
+        """
+        self._ensure_wrap()
+        if not self._cached_lines or not self._cached_col_width:
             return self._chapter_text
 
-        idx = self._page_index
-        left = pages[idx] if idx < len(pages) else Text("")
-        right = pages[idx + 1] if idx + 1 < len(pages) else Text("")
+        col_w = self._cached_col_width
+        page_h = self._cached_page_height
+        lines = self._cached_lines
+        gap = " " * self._GUTTER
+        blank = Text(" " * col_w)
 
-        grid = Table.grid(padding=(0, self._GUTTER // 2), expand=True)
-        grid.add_column(ratio=1, no_wrap=False, overflow="fold")
-        grid.add_column(ratio=1, no_wrap=False, overflow="fold")
-        grid.add_row(left, right)
-        return grid
+        left_start = self._page_index * page_h
+        right_start = left_start + page_h
+
+        out = Text(no_wrap=True, overflow="crop")
+        for row in range(page_h):
+            left = _pad(lines[left_start + row], col_w) if left_start + row < len(lines) else blank
+            right = (
+                _pad(lines[right_start + row], col_w)
+                if right_start + row < len(lines)
+                else Text()
+            )
+            if row:
+                out.append("\n")
+            out.append_text(left)
+            out.append(gap)
+            out.append_text(right)
+        return out
 
     # ----- pagination ------------------------------------------------------
 
-    def _paginate(self) -> tuple[Text, ...]:
-        """Cache-aware split of the chapter text into page-sized chunks.
+    def _ensure_wrap(self) -> None:
+        """Re-wrap the chapter text if the viewport size changed.
 
-        Re-wraps and re-slices whenever the viewport size changes. Each page
-        is itself a Rich :class:`Text` joined back from its wrapped lines so
-        original styling is preserved.
+        Cheap enough to do on every render — Rich wraps a typical chapter
+        (~2-3 thousand lines worth of source) in single-digit milliseconds.
         """
         width = self.size.width
         height = self.size.height
         if width <= 0 or height <= 0 or not self._chapter_text.plain:
-            return ()
-        if self._cached_pages and self._cached_width == width and self._cached_height == height:
-            return self._cached_pages
+            self._cached_lines = []
+            self._cached_col_width = 0
+            self._cached_page_height = 0
+            self._cached_width = width
+            self._cached_height = height
+            return
+        if self._cached_lines and self._cached_width == width and self._cached_height == height:
+            return
 
-        page_width = max(1, (width - self._GUTTER) // 2)
-        page_height = max(1, height)
-        console = Console(width=page_width, record=False, force_terminal=True)
-        wrapped = self._chapter_text.wrap(console, page_width)
-        # `wrapped` is a `Lines` (a list of Text). Slice by page_height.
-        pages: list[Text] = []
-        for start in range(0, len(wrapped), page_height):
-            slice_lines = list(wrapped[start : start + page_height])
-            page = Text()
-            for i, line in enumerate(slice_lines):
-                if i:
-                    page.append("\n")
-                page.append_text(line)
-            pages.append(page)
+        col_w = max(1, (width - self._GUTTER) // 2)
+        page_h = max(1, height)
+        console = Console(width=col_w, record=False, force_terminal=True)
+        wrapped = list(self._chapter_text.wrap(console, col_w))
 
-        self._cached_pages = tuple(pages)
+        self._cached_lines = wrapped
+        self._cached_col_width = col_w
+        self._cached_page_height = page_h
         self._cached_width = width
         self._cached_height = height
-        return self._cached_pages
 
     # ----- size hook -------------------------------------------------------
 
     def on_resize(self) -> None:
         """Invalidate the page cache when the viewport changes size."""
-        self._cached_pages = ()
-        self._cached_width = 0
-        self._cached_height = 0
+        self._invalidate_cache()
         self.refresh()
+
+
+def _pad(line: Text, width: int) -> Text:
+    """Right-pad *line* to exactly *width* cells without mutating it."""
+    plain = line.plain
+    if len(plain) >= width:
+        return line
+    out = line.copy()
+    out.append(" " * (width - len(plain)))
+    return out
