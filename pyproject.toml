@@ -28,7 +28,7 @@ dev = [
 ]
 
 [project.scripts]
-bookreader = "bookreader.cli:main"
+bookreader = "bookreader.cli:entrypoint"
 
 [build-system]
 requires = ["setuptools>=68"]
