@@ -90,11 +90,61 @@ class _AddBookPrompt(ModalScreen[str | None]):
         self.dismiss(None)
 
 
+class _AddWishlistPrompt(ModalScreen[tuple[str, str] | None]):
+    """Prompt for a wishlist (file-less) entry: title + author."""
+
+    BINDINGS: ClassVar[list[BindingType]] = [
+        Binding("escape", "cancel", "Cancel"),
+    ]
+
+    def compose(self) -> ComposeResult:
+        """Build the modal."""
+        yield Static("Add to wishlist (TBR):", id="wishlist-prompt-label")
+        yield Input(placeholder="Title", id="wishlist-title")
+        yield Input(placeholder="Author (optional)", id="wishlist-author")
+        with Horizontal(id="wishlist-prompt-buttons"):
+            yield Button("Add", id="wishlist-ok", variant="primary")
+            yield Button("Cancel", id="wishlist-cancel")
+
+    def on_mount(self) -> None:
+        """Focus the title field."""
+        self.query_one("#wishlist-title", Input).focus()
+
+    def on_input_submitted(self, event: Input.Submitted) -> None:
+        """Tab through fields; submit when on the author input."""
+        if event.input.id == "wishlist-title":
+            self.query_one("#wishlist-author", Input).focus()
+        else:
+            self._submit()
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        """Dispatch button clicks."""
+        if event.button.id == "wishlist-ok":
+            self._submit()
+        else:
+            self.dismiss(None)
+
+    def action_cancel(self) -> None:
+        """Esc closes the modal."""
+        self.dismiss(None)
+
+    def _submit(self) -> None:
+        """Validate and dismiss with ``(title, author)`` or ``None``."""
+        title = self.query_one("#wishlist-title", Input).value.strip()
+        author = self.query_one("#wishlist-author", Input).value.strip()
+        if not title:
+            self.notify("Title is required", severity="error", timeout=3)
+            self.query_one("#wishlist-title", Input).focus()
+            return
+        self.dismiss((title, author))
+
+
 class LibraryScreen(Screen[None]):
     """List of books with a collections sidebar."""
 
     BINDINGS: ClassVar[list[BindingType]] = [
         Binding("a", "add_book", "Add"),
+        Binding("A,shift+a", "add_wishlist", "Wishlist"),
         Binding("d,delete", "remove_book", "Remove"),
         Binding("c", "toggle_complete", "Mark done"),
         Binding("i,enter", "open_book", "Open"),
@@ -181,10 +231,14 @@ class LibraryScreen(Screen[None]):
 
     def _refresh_status(self) -> None:
         """Update the bottom status line."""
-        finished = sum(1 for b in self._service.list_books() if b.completed_at)
-        total = len(self._service.list_books())
+        all_books = self._service.list_books()
+        total = len(all_books)
+        finished = sum(1 for b in all_books if b.completed_at)
+        wishlist = sum(1 for b in all_books if b.is_phantom)
+        wish_part = f" · {wishlist} wishlist" if wishlist else ""
         self.query_one("#library-status", Static).update(
-            f"{total} books · {finished} finished · filter: {self._current_filter.label}"
+            f"{total} books · {finished} finished{wish_part}"
+            f" · filter: {self._current_filter.label}"
         )
 
     def _reading_set(self) -> set[int]:
@@ -221,11 +275,41 @@ class LibraryScreen(Screen[None]):
     # ----- actions --------------------------------------------------------
 
     def action_open_book(self) -> None:
-        """Open the highlighted book in the reader."""
+        """Open the highlighted book in the reader.
+
+        Phantom (wishlist) rows can't be opened — they have no file. We
+        re-route to the attach prompt so the user can supply one.
+        """
         book = self._selected_book()
         if book is None:
             return
+        if book.is_phantom:
+            self.notify(
+                "no file attached — press Enter again on the path prompt",
+                title="Wishlist entry",
+                timeout=3,
+            )
+            self._prompt_attach(book)
+            return
         self.app.action_open_book(book)  # type: ignore[attr-defined]
+
+    def _prompt_attach(self, book: Book) -> None:
+        """Open the path prompt to attach an EPUB to a phantom row."""
+
+        def _after(path: str | None) -> None:
+            if not path:
+                return
+            try:
+                from pathlib import Path
+
+                self._service.attach_epub(book.id, Path(path).expanduser())
+            except Exception as exc:  # central handler shows the error
+                self.notify(str(exc), title="Attach failed", severity="error", timeout=6)
+                return
+            self.notify(f"Attached: {book.title}", timeout=3)
+            self._reload()
+
+        self.app.push_screen(_AddBookPrompt(), _after)
 
     def action_add_book(self) -> None:
         """Prompt for a path and add the book."""
@@ -243,6 +327,26 @@ class LibraryScreen(Screen[None]):
             self._reload()
 
         self.app.push_screen(_AddBookPrompt(), _after)
+
+    def action_add_wishlist(self) -> None:
+        """Prompt for title + author and add a phantom row."""
+
+        def _after(values: tuple[str, str] | None) -> None:
+            if not values:
+                return
+            title, author = values
+            authors = (author,) if author else ()
+            try:
+                self._service.add_wishlist(title=title, authors=authors)
+            except Exception as exc:
+                self.notify(
+                    str(exc), title="Wishlist failed", severity="error", timeout=6
+                )
+                return
+            self.notify(f"Added: {title}", timeout=3)
+            self._reload()
+
+        self.app.push_screen(_AddWishlistPrompt(), _after)
 
     def action_remove_book(self) -> None:
         """Remove the highlighted book."""
@@ -291,7 +395,7 @@ class LibraryScreen(Screen[None]):
     def action_show_help(self) -> None:
         """Show the most useful keys as a notification."""
         self.notify(
-            "Enter open · a add · d remove · c done · 1-5 rate · T theme · q quit",
+            "Enter open · a add · A wishlist · d remove · c done · 1-5 rate · q quit",
             title="Keys",
             timeout=6,
         )

@@ -141,3 +141,24 @@ _AddBookPrompt > Static {
 #add-prompt-buttons Button {
     margin: 0 1;
 }
+
+/* ---------- Add-wishlist modal ---------- */
+
+_AddWishlistPrompt {
+    align: center middle;
+}
+_AddWishlistPrompt > Static {
+    margin-bottom: 1;
+    color: $foreground;
+}
+#wishlist-title, #wishlist-author {
+    width: 60;
+    margin-bottom: 1;
+}
+#wishlist-prompt-buttons {
+    height: 3;
+    align: center middle;
+}
+#wishlist-prompt-buttons Button {
+    margin: 0 1;
+}

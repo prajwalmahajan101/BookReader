@@ -20,6 +20,7 @@ if TYPE_CHECKING:
 _STATUS_FINISHED = ("✓", "green", "finished")
 _STATUS_READING = ("●", "blue", "reading")
 _STATUS_QUEUED = ("○", "dim", "queued")
+_STATUS_PHANTOM = ("◌", "magenta", "wishlist")
 
 
 def status_cell(book: Book, reading_ids: set[int] | None = None) -> Text:
@@ -34,7 +35,9 @@ def status_cell(book: Book, reading_ids: set[int] | None = None) -> Text:
     Returns:
         A short :class:`Text`, two cells wide.
     """
-    if book.completed_at:
+    if book.is_phantom:
+        glyph, colour, _label = _STATUS_PHANTOM
+    elif book.completed_at:
         glyph, colour, _label = _STATUS_FINISHED
     elif reading_ids and book.id in reading_ids:
         glyph, colour, _label = _STATUS_READING
