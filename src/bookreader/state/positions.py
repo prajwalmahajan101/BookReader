@@ -36,12 +36,16 @@ class Position:
     Attributes:
         chapter_index: Spine index of the current chapter.
         scroll_offset: Vertical scroll in lines from the chapter top.
+            Used in scroll mode.
+        page_index: Index of the left page of the current spread in
+            two-page mode. ``None`` if the book was last read in scroll mode.
         updated_at: ISO-8601 UTC timestamp of the last write.
     """
 
     chapter_index: int
     scroll_offset: int
     updated_at: str
+    page_index: int | None = None
 
 
 class PositionStore:
@@ -62,22 +66,32 @@ class PositionStore:
         if raw is None:
             return None
         try:
+            page_raw = raw.get("page_index")
             return Position(
                 chapter_index=int(raw["chapter_index"]),
                 scroll_offset=int(raw["scroll_offset"]),
                 updated_at=str(raw["updated_at"]),
+                page_index=int(page_raw) if page_raw is not None else None,
             )
         except (KeyError, TypeError, ValueError):
             log.warning("ignoring malformed position for %s", identifier)
             return None
 
-    def save(self, identifier: str, chapter_index: int, scroll_offset: int) -> Position:
+    def save(
+        self,
+        identifier: str,
+        chapter_index: int,
+        scroll_offset: int,
+        page_index: int | None = None,
+    ) -> Position:
         """Record a new position for *identifier* and flush to disk.
 
         Args:
             identifier: Book identifier (``dc:identifier`` or SHA-1 fallback).
             chapter_index: Spine index of the current chapter.
-            scroll_offset: Vertical scroll offset in lines.
+            scroll_offset: Vertical scroll offset in lines (scroll mode).
+            page_index: Left-page index in a two-page spread, or ``None``
+                if the book was last read in scroll mode.
 
         Returns:
             The :class:`Position` written.
@@ -89,6 +103,7 @@ class PositionStore:
             chapter_index=chapter_index,
             scroll_offset=scroll_offset,
             updated_at=datetime.now(UTC).isoformat(timespec="seconds"),
+            page_index=page_index,
         )
         self._data[identifier] = asdict(position)
         self._flush()

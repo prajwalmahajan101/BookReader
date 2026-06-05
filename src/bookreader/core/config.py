@@ -39,6 +39,7 @@ class Settings(BaseSettings):
     page_scroll_pct: int = Field(default=90, ge=10, le=100)
     show_toc_default: bool = True
     images_enabled: bool = False
+    two_page_default: bool = False
 
 
 def load_settings() -> Settings:
