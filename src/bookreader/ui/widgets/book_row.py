@@ -65,3 +65,13 @@ def authors_cell(book: Book) -> Text:
     if not book.authors:
         return Text("—", style="dim")
     return Text(", ".join(book.authors), style="dim")
+
+
+def time_cell(minutes: int) -> Text:
+    """Render reading-time as ``Hh Mm`` or ``M m``, ``—`` when zero."""
+    if minutes <= 0:
+        return Text("—", style="dim")
+    hours, mins = divmod(minutes, 60)
+    if hours:
+        return Text(f"{hours}h {mins:02d}m", style="cyan")
+    return Text(f"{mins}m", style="cyan")

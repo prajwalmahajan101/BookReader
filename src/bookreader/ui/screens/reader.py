@@ -135,6 +135,9 @@ class ReaderScreen(Screen[None]):
         self._mode: Mode = "paged" if two_page else "scroll"
         # JSON-backed bookmark fallback (used when no library is wired)
         self._bookmarks_json = JsonBookmarkStore()
+        # Reading-session state (only meaningful when a library is wired)
+        self._session_id: int | None = None
+        self._session_start_chapter: int = 0
 
     def compose(self) -> ComposeResult:
         """Build the widget tree."""
@@ -170,6 +173,15 @@ class ReaderScreen(Screen[None]):
             self.call_after_refresh(self._restore_scroll, start_offset)
         elif self._mode == "paged" and start_page:
             self.call_after_refresh(self._restore_page, start_page)
+
+        # Open a reading session if the library is wired. End on quit.
+        if self._library is not None and self._library_book_id is not None:
+            try:
+                session = self._library.start_session(self._library_book_id)
+                self._session_id = session.id
+                self._session_start_chapter = self._chapter_index
+            except Exception as exc:
+                log.warning("session start failed: %s", exc)
 
     # ----- mode helpers ----------------------------------------------------
 
@@ -372,8 +384,9 @@ class ReaderScreen(Screen[None]):
         )
 
     def action_quit(self) -> None:
-        """Save position and return to the previous screen (or exit)."""
+        """Save position, close the session, and pop back to the previous screen."""
         self._save_position()
+        self._end_session()
         if len(self.app.screen_stack) > 1:
             self.app.pop_screen()
             # Tell the library screen to refresh counts / last-opened.
@@ -533,6 +546,17 @@ class ReaderScreen(Screen[None]):
             self._bookmarks_json.delete(self._book.identifier, bookmark_id)
         except Exception as exc:
             log.warning("bookmark delete (json) failed: %s", exc)
+
+    def _end_session(self) -> None:
+        """Close the reading session if one is open (idempotent)."""
+        if self._library is None or self._session_id is None:
+            return
+        pages = max(0, self._chapter_index - self._session_start_chapter)
+        try:
+            self._library.end_session(self._session_id, pages_advanced=pages)
+        except Exception as exc:
+            log.warning("session end failed: %s", exc)
+        self._session_id = None
 
     def _collect_bookmark_rows(self) -> list[BookmarkRow]:
         """Pull bookmarks from the active store and normalise for display."""
