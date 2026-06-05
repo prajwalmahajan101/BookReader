@@ -28,10 +28,12 @@ from typing import TYPE_CHECKING, ClassVar, Literal
 
 from textual.binding import Binding, BindingType
 from textual.containers import Container, Horizontal, VerticalScroll
-from textual.screen import Screen
-from textual.widgets import Footer, Header
+from textual.screen import ModalScreen, Screen
+from textual.widgets import Button, Footer, Header, Input, Static
 
 from bookreader.core.logging import get_logger
+from bookreader.state.bookmarks_json import JsonBookmarkStore
+from bookreader.ui.screens.bookmarks import BookmarkRow, BookmarksScreen
 from bookreader.ui.widgets.chapter_view import ChapterView
 from bookreader.ui.widgets.paged_view import PagedView
 from bookreader.ui.widgets.status_bar import StatusBar
@@ -43,6 +45,41 @@ if TYPE_CHECKING:
     from bookreader.epub.chapter import Book
     from bookreader.library.service import LibraryService
     from bookreader.state.positions import PositionStore
+
+
+class _BookmarkNotePrompt(ModalScreen[str | None]):
+    """One-line prompt for the optional bookmark note."""
+
+    BINDINGS: ClassVar[list[BindingType]] = [
+        Binding("escape", "cancel", "Cancel"),
+    ]
+
+    def compose(self) -> ComposeResult:
+        """Build the modal."""
+        yield Static("Bookmark — note (optional):", id="bookmark-prompt-label")
+        yield Input(placeholder="e.g. 'great quote'", id="bookmark-prompt-input")
+        with Horizontal(id="bookmark-prompt-buttons"):
+            yield Button("Save", id="bookmark-ok", variant="primary")
+            yield Button("Cancel", id="bookmark-cancel")
+
+    def on_mount(self) -> None:
+        """Focus the input."""
+        self.query_one(Input).focus()
+
+    def on_input_submitted(self, event: Input.Submitted) -> None:
+        """Save on Enter."""
+        self.dismiss(event.value)
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        """Dispatch button clicks."""
+        if event.button.id == "bookmark-ok":
+            self.dismiss(self.query_one(Input).value)
+        else:
+            self.dismiss(None)
+
+    def action_cancel(self) -> None:
+        """Esc closes."""
+        self.dismiss(None)
 
 log = get_logger(__name__)
 
@@ -61,6 +98,8 @@ class ReaderScreen(Screen[None]):
         Binding("p", "prev_chapter", "Prev ch."),
         Binding("t", "toggle_toc", "TOC"),
         Binding("2", "toggle_paged", "2-page"),
+        Binding("m", "add_bookmark", "Bookmark"),
+        Binding("apostrophe", "list_bookmarks", "Marks"),
         Binding("g", "scroll_home", "Top", show=False),
         Binding("G,shift+g", "scroll_end", "Bottom", show=False),
         Binding("T,shift+t", "cycle_theme", "Theme"),
@@ -94,6 +133,8 @@ class ReaderScreen(Screen[None]):
         self._library_book_id = library_book_id
         self._chapter_index = 0
         self._mode: Mode = "paged" if two_page else "scroll"
+        # JSON-backed bookmark fallback (used when no library is wired)
+        self._bookmarks_json = JsonBookmarkStore()
 
     def compose(self) -> ComposeResult:
         """Build the widget tree."""
@@ -285,10 +326,47 @@ class ReaderScreen(Screen[None]):
         """Cycle dark → light → sepia → dark."""
         self.app.action_cycle_theme()  # type: ignore[attr-defined]
 
+    def action_add_bookmark(self) -> None:
+        """Prompt for an optional note, then save a bookmark at the cursor."""
+        chapter_idx = self._chapter_index
+        scroll_offset = self._current_offset()
+
+        def _after(note: str | None) -> None:
+            if note is None:
+                return
+            note = note.strip()
+            self._save_bookmark(
+                chapter_index=chapter_idx,
+                scroll_offset=scroll_offset,
+                note=note,
+            )
+            self.notify("Bookmarked", timeout=2)
+
+        self.app.push_screen(_BookmarkNotePrompt(), _after)
+
+    def action_list_bookmarks(self) -> None:
+        """Show the list of bookmarks for this book; jump on Enter."""
+        rows = self._collect_bookmark_rows()
+        screen = BookmarksScreen(rows)
+
+        def _after(chosen: BookmarkRow | None) -> None:
+            for bid in screen.deleted_ids:
+                self._delete_bookmark(bid)
+            if chosen is None:
+                return
+            self._jump_to(chosen.chapter_index)
+            if self._mode == "paged" and chosen.page_index is not None:
+                self.call_after_refresh(self._restore_page, chosen.page_index)
+            elif self._mode == "scroll" and chosen.scroll_offset:
+                self.call_after_refresh(self._restore_scroll, chosen.scroll_offset)
+
+        self.app.push_screen(screen, _after)
+
     def action_show_help(self) -> None:
         """Show a help notification listing the most useful keys."""
         self.notify(
-            "j/k scroll · space/b page · n/p chapter · t TOC · 2 spread · T theme · q quit",
+            "j/k scroll · space/b page · n/p chapter · t TOC · m mark · "
+            "' marks · 2 spread · q quit",
             title="Keys",
             timeout=6,
         )
@@ -402,3 +480,98 @@ class ReaderScreen(Screen[None]):
             if lib_pos is not None:
                 return lib_pos
         return self._positions.get(self._book.identifier)
+
+    # ----- bookmarks -------------------------------------------------------
+
+    def _current_offset(self) -> int:
+        """Return the offset to record on a bookmark for the active mode."""
+        try:
+            if self._mode == "paged":
+                return self.query_one("#paged", PagedView).page_index
+            return int(self.query_one("#reader", VerticalScroll).scroll_y)
+        except Exception:
+            return 0
+
+    def _save_bookmark(
+        self,
+        *,
+        chapter_index: int,
+        scroll_offset: int,
+        note: str,
+    ) -> None:
+        """Persist a bookmark to the library DB or JSON fallback."""
+        if self._library is not None and self._library_book_id is not None:
+            try:
+                self._library.bookmarks.add(
+                    self._library_book_id,
+                    chapter_index=chapter_index,
+                    scroll_offset=scroll_offset,
+                    note=note,
+                )
+                return
+            except Exception as exc:
+                log.warning("bookmark save (library) failed: %s", exc)
+        try:
+            self._bookmarks_json.add(
+                self._book.identifier,
+                chapter_index=chapter_index,
+                scroll_offset=scroll_offset,
+                note=note,
+            )
+        except Exception as exc:
+            log.warning("bookmark save (json) failed: %s", exc)
+
+    def _delete_bookmark(self, bookmark_id: int) -> None:
+        """Delete a bookmark from whichever store owns it."""
+        if self._library is not None and self._library_book_id is not None:
+            try:
+                self._library.bookmarks.delete(bookmark_id)
+                return
+            except Exception as exc:
+                log.warning("bookmark delete (library) failed: %s", exc)
+        try:
+            self._bookmarks_json.delete(self._book.identifier, bookmark_id)
+        except Exception as exc:
+            log.warning("bookmark delete (json) failed: %s", exc)
+
+    def _collect_bookmark_rows(self) -> list[BookmarkRow]:
+        """Pull bookmarks from the active store and normalise for display."""
+        rows: list[BookmarkRow] = []
+        chapters = self._book.chapters
+        if self._library is not None and self._library_book_id is not None:
+            for bm in self._library.bookmarks.list_for(self._library_book_id):
+                title = (
+                    chapters[bm.chapter_index].title
+                    if 0 <= bm.chapter_index < len(chapters)
+                    else f"Chapter {bm.chapter_index + 1}"
+                )
+                rows.append(
+                    BookmarkRow(
+                        id=bm.id,
+                        chapter_title=title,
+                        chapter_index=bm.chapter_index,
+                        scroll_offset=bm.scroll_offset,
+                        page_index=None,
+                        note=bm.note,
+                        created_at=bm.created_at,
+                    )
+                )
+            return rows
+        for bm in self._bookmarks_json.list_for(self._book.identifier):
+            title = (
+                chapters[bm.chapter_index].title
+                if 0 <= bm.chapter_index < len(chapters)
+                else f"Chapter {bm.chapter_index + 1}"
+            )
+            rows.append(
+                BookmarkRow(
+                    id=bm.id,
+                    chapter_title=title,
+                    chapter_index=bm.chapter_index,
+                    scroll_offset=bm.scroll_offset,
+                    page_index=None,
+                    note=bm.note,
+                    created_at=bm.created_at,
+                )
+            )
+        return rows

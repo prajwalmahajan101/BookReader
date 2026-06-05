@@ -162,3 +162,39 @@ _AddWishlistPrompt > Static {
 #wishlist-prompt-buttons Button {
     margin: 0 1;
 }
+
+/* ---------- Bookmark prompt ---------- */
+
+_BookmarkNotePrompt {
+    align: center middle;
+}
+_BookmarkNotePrompt > Static {
+    margin-bottom: 1;
+    color: $foreground;
+}
+#bookmark-prompt-input {
+    width: 60;
+}
+#bookmark-prompt-buttons {
+    height: 3;
+    align: center middle;
+}
+#bookmark-prompt-buttons Button {
+    margin: 0 1;
+}
+
+/* ---------- Bookmarks screen ---------- */
+
+BookmarksScreen {
+    align: center middle;
+}
+#bookmarks-list {
+    width: 80;
+    height: 70%;
+    background: $surface;
+    border: solid $boost;
+}
+#bookmarks-empty {
+    padding: 2 4;
+    color: $foreground-muted;
+}
