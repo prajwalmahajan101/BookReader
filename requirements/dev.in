@@ -1,0 +1,8 @@
+-r base.in
+ruff>=0.6
+mypy>=1.10
+pytest>=8.0
+pytest-asyncio>=0.23
+pre-commit>=3.7
+pip-tools>=7.4
+types-beautifulsoup4
