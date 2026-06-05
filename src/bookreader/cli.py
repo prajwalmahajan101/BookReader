@@ -157,6 +157,34 @@ def attach_cmd(book_id: int, path: Path) -> None:
         service.close()
 
 
+@main.command("stats")
+def stats_cmd() -> None:
+    """Print per-book reading time and last-session date."""
+    service = LibraryService()
+    try:
+        books = service.list_books()
+        if not books:
+            click.echo("(library is empty)")
+            return
+        rows: list[tuple[int, str, str]] = []
+        for b in books:
+            mins = service.minutes_read(b.id)
+            if mins <= 0 and b.last_opened_at is None:
+                continue
+            hours, mm = divmod(mins, 60)
+            t = f"{hours:>3}h {mm:02d}m" if hours else f"    {mm:>3}m"
+            last = b.last_opened_at or "—"
+            rows.append((mins, t, f"{t}  {last[:10]}  {b.title}"))
+        if not rows:
+            click.echo("(no sessions recorded yet)")
+            return
+        rows.sort(reverse=True)
+        for _, _, line in rows:
+            click.echo(line)
+    finally:
+        service.close()
+
+
 @main.command("list")
 def list_cmd() -> None:
     """Print every book in the library."""
