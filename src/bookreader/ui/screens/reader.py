@@ -1,12 +1,17 @@
-"""Reader screen — TOC sidebar plus a scrollable chapter pane.
+"""Reader screen — TOC sidebar, centered reading column, status strip.
 
-Layout (IDE three-panel pattern):
+Layout (IDE three-panel pattern with a constrained reading column):
 
-    ┌──────────┬─────────────────────────────┐
-    │  TOC     │  Chapter text               │
-    │  (left)  │  (main, scrollable)         │
-    └──────────┴─────────────────────────────┘
-            Footer (always-visible key hints)
+    ┌────────── Header (book title · author) ──────────┐
+    │ ┌──────┬─────────────────────────────────────┐   │
+    │ │ TOC  │      Reading column (≤ 80 cells)    │   │
+    │ │      │                                     │   │
+    │ │ ▶ Ch3│      …prose, paragraphs…            │   │
+    │ │   Ch4│                                     │   │
+    │ └──────┴─────────────────────────────────────┘   │
+    │ Chapter title · 3/24 · ▰▰▰▰▱▱▱▱▱▱  37%           │
+    │ Footer (always-visible key hints)                │
+    └──────────────────────────────────────────────────┘
 """
 
 from __future__ import annotations
@@ -14,12 +19,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, ClassVar
 
 from textual.binding import Binding, BindingType
-from textual.containers import Horizontal, VerticalScroll
+from textual.containers import Container, Horizontal, VerticalScroll
 from textual.screen import Screen
 from textual.widgets import Footer, Header
 
 from bookreader.core.logging import get_logger
 from bookreader.ui.widgets.chapter_view import ChapterView
+from bookreader.ui.widgets.status_bar import StatusBar
 from bookreader.ui.widgets.toc_tree import TocTree
 
 if TYPE_CHECKING:
@@ -58,18 +64,19 @@ class ReaderScreen(Screen[None]):
 
     def compose(self) -> ComposeResult:
         """Build the widget tree."""
-        yield Header(show_clock=False)
-        with Horizontal():
+        yield Header(show_clock=False, icon="📖")
+        with Horizontal(id="content"):
             yield TocTree(self._book.toc, id="toc")
-            with VerticalScroll(id="reader"):
+            with VerticalScroll(id="reader"), Container(id="reading-column"):
                 yield ChapterView(id="chapter")
+        yield StatusBar(id="status")
         yield Footer()
 
     def on_mount(self) -> None:
         """Restore last-read position and paint the first chapter."""
         self.title = self._book.title
         if self._book.authors:
-            self.sub_title = ", ".join(self._book.authors)
+            self.sub_title = " · ".join(self._book.authors)
 
         saved = self._positions.get(self._book.identifier)
         start_chapter = saved.chapter_index if saved else 0
@@ -81,31 +88,47 @@ class ReaderScreen(Screen[None]):
             self.call_after_refresh(self._restore_scroll, start_offset)
 
     def _paint_current_chapter(self, *, scroll_to_end: bool = False) -> None:
-        """Render the current chapter into the chapter view.
+        """Render the current chapter, update TOC + status, scroll into view.
 
         Args:
-            scroll_to_end: If true, jump to the bottom after rendering.
-                Used when entering a chapter from the next one via ``b`` or
-                ``k`` at the chapter start.
+            scroll_to_end: If true, jump to the bottom after rendering. Used
+                when entering a chapter from the next one via ``b`` or ``k``
+                at the chapter start.
         """
         chapter = self._book.chapters[self._chapter_index]
         view = self.query_one("#chapter", ChapterView)
         view.show_chapter(chapter)
-        self.sub_title = (
-            f"{', '.join(self._book.authors) + ' — ' if self._book.authors else ''}"
-            f"{chapter.title}  "
-            f"[{self._chapter_index + 1}/{len(self._book.chapters)}]"
-        )
+
+        self.query_one(TocTree).set_current_chapter(self._chapter_index)
+
         scroller = self.query_one("#reader", VerticalScroll)
         if scroll_to_end:
             self.call_after_refresh(scroller.scroll_end, animate=False)
         else:
             scroller.scroll_home(animate=False)
+        self.call_after_refresh(self._refresh_status)
 
     def _restore_scroll(self, offset: int) -> None:
         """Apply a previously-saved scroll offset (lines from top)."""
         scroller = self.query_one("#reader", VerticalScroll)
         scroller.scroll_to(y=offset, animate=False)
+        self._refresh_status()
+
+    def _refresh_status(self) -> None:
+        """Recompute the progress display from the current scroll state."""
+        scroller = self.query_one("#reader", VerticalScroll)
+        chapter_progress = (
+            scroller.scroll_y / scroller.max_scroll_y if scroller.max_scroll_y else 1.0
+        )
+        total = len(self._book.chapters)
+        overall = (self._chapter_index + chapter_progress) / total
+        chapter = self._book.chapters[self._chapter_index]
+        self.query_one(StatusBar).set_state(
+            chapter_title=chapter.title,
+            chapter_index=self._chapter_index,
+            chapter_count=total,
+            progress=overall,
+        )
 
     # ----- actions ---------------------------------------------------------
 
@@ -118,6 +141,7 @@ class ReaderScreen(Screen[None]):
         if self._at_boundary(delta) and self._flow_to_adjacent_chapter(delta):
             return
         self.query_one("#reader", VerticalScroll).scroll_relative(y=delta, animate=False)
+        self._refresh_status()
 
     def action_scroll_page(self, direction: int) -> None:
         """Scroll one page; flow into the adjacent chapter at the boundary.
@@ -130,14 +154,17 @@ class ReaderScreen(Screen[None]):
         scroller = self.query_one("#reader", VerticalScroll)
         page = max(1, int(scroller.size.height * 0.9))
         scroller.scroll_relative(y=direction * page, animate=False)
+        self._refresh_status()
 
     def action_scroll_home(self) -> None:
         """Jump to the top of the current chapter."""
         self.query_one("#reader", VerticalScroll).scroll_home(animate=False)
+        self._refresh_status()
 
     def action_scroll_end(self) -> None:
         """Jump to the bottom of the current chapter."""
         self.query_one("#reader", VerticalScroll).scroll_end(animate=False)
+        self._refresh_status()
 
     def action_next_chapter(self) -> None:
         """Move to the next chapter, if any."""
@@ -161,7 +188,7 @@ class ReaderScreen(Screen[None]):
     def action_show_help(self) -> None:
         """Show a help notification listing the most useful keys."""
         self.notify(
-            "j/k scroll • space/b page • n/p chapter • t TOC • T theme • q quit",
+            "j/k scroll · space/b page · n/p chapter · t TOC · T theme · q quit",
             title="Keys",
             timeout=6,
         )
@@ -205,8 +232,8 @@ class ReaderScreen(Screen[None]):
         """Move into the next/previous chapter when sitting at a boundary.
 
         Args:
-            direction: ``+1`` to flow forward into the next chapter (landing
-                at the top), ``-1`` to flow backward (landing at the bottom).
+            direction: ``+1`` to flow forward (land at top of next chapter),
+                ``-1`` to flow backward (land at bottom of previous chapter).
 
         Returns:
             ``True`` if a chapter switch happened, ``False`` if the book is
