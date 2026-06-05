@@ -1,0 +1,31 @@
+line-length = 100
+target-version = "py310"
+extend-exclude = ["build", "dist", ".venv"]
+
+[lint]
+select = [
+    "E", "F", "W",   # pycodestyle + pyflakes
+    "I",             # isort
+    "B",             # bugbear
+    "UP",            # pyupgrade
+    "SIM",           # simplify
+    "RUF",           # ruff-specific
+    "D",             # pydocstyle
+    "ANN",           # annotations
+    "TCH",           # type-checking-only imports
+]
+ignore = [
+    "D203",  # 1 blank line before class docstring (conflicts with D211)
+    "D213",  # multi-line summary second line (conflicts with D212)
+    "ANN101", "ANN102",  # self / cls type hints (deprecated)
+]
+
+[lint.per-file-ignores]
+"tests/**" = ["D", "ANN"]
+
+[lint.pydocstyle]
+convention = "google"
+
+[format]
+quote-style = "double"
+indent-style = "space"
