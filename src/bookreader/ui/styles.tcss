@@ -75,6 +75,49 @@ Footer > .footer--key {
     text-style: bold;
 }
 
+/* ---------- Library screen ---------- */
+
+#library-content {
+    layout: horizontal;
+    height: 1fr;
+}
+
+#library-sidebar {
+    width: 28;
+    min-width: 22;
+    max-width: 38;
+    padding: 1 1;
+    border-right: solid $boost;
+}
+
+#library-table {
+    width: 1fr;
+    padding: 0 1;
+}
+
+#library-status {
+    height: 1;
+    padding: 0 2;
+}
+
+/* Add-book modal */
+_AddBookPrompt {
+    align: center middle;
+}
+_AddBookPrompt > Static {
+    margin-bottom: 1;
+}
+#add-prompt-input {
+    width: 60;
+}
+#add-prompt-buttons {
+    height: 3;
+    align: center middle;
+}
+#add-prompt-buttons Button {
+    margin: 0 1;
+}
+
 /* ────────────── Dark — Catppuccin-Mocha-inspired ────────────── */
 App.-theme-dark {
     background: #1e1e2e;
