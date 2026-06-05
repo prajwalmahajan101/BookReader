@@ -32,11 +32,16 @@ class TocTree(OptionList):
             self.chapter_index = chapter_index
             super().__init__()
 
-    def __init__(self, entries: tuple[TocEntry, ...]) -> None:
-        """Initialize with the book's flattened TOC."""
+    def __init__(self, entries: tuple[TocEntry, ...], *, id: str | None = None) -> None:
+        """Initialize with the book's flattened TOC.
+
+        Args:
+            entries: Flattened TOC rows to display.
+            id: DOM id for the widget, forwarded to ``OptionList``.
+        """
         self._entries = entries
         options = [Option(self._format(entry), id=str(i)) for i, entry in enumerate(entries)]
-        super().__init__(*options, id="toc-list")
+        super().__init__(*options, id=id)
 
     @staticmethod
     def _format(entry: TocEntry) -> str:
