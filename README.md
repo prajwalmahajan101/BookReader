@@ -1,6 +1,18 @@
 # BookReader
 
-A terminal EPUB reader and personal library, built with [Textual](https://textual.textualize.io/).
+> A terminal EPUB reader and personal library, built with [Textual](https://textual.textualize.io/) — for people who'd rather read in their terminal than launch a desktop app.
+
+BookReader opens any EPUB in a focused two-column or two-page TUI, remembers where you left off, indexes everything you've added into a small SQLite library, and tracks per-book reading time and bookmarks. Inline kitty / sixel image rendering is on by an environment toggle when your terminal supports a graphics protocol; otherwise figures fall back to `[image: alt]` placeholders.
+
+Built solo as a phase-driven exercise: each phase is a feature branch with its own ADR, atomic commits, and merge-clean history. Currently shipped: **Phase 1 (Reader Core)**, **Phase 1.5 (Two-page mode)**, **Phase 2 (SQLite Library with one-shot migration from the Phase-1 JSON store)**, **Phase 3 (Polish — bookmarks, sessions, phantom / wishlist books, inline images)**.
+
+## How it's built
+
+- **Layered architecture** — `core` (config/paths/logging, no I/O) · `epub` (parse + render, no UI/DB) · `library` (persistence + service) · `ui` (Textual screens + widgets). The UI never imports a repository directly; it goes through a service. Decisions live in [`docs/adr/`](./docs/adr/).
+- **Strict typing + linting** — mypy strict, ruff (format + lint), pre-commit enforced. PEP 257 + Google docstrings; module-level logger via `bookreader.core.logging.get_logger(__name__)`.
+- **Dependencies** — `pip-tools` with layered `requirements/*.in → *.txt` (runtime / dev / test split).
+- **Async-first** — `pytest-asyncio` with `asyncio_mode = auto`.
+- **Commit discipline** — conventional commits, atomic, on `feature/phaseN_<topic>` branches; `main` is always releasable. 40 commits across 11 feature branches all merged clean as of v0.3.
 
 ## Install (development)
 
@@ -85,8 +97,7 @@ renamed to `positions.json.migrated` once data flows.
 
 Phase 1 (Reader Core) + Phase 1.5 (Two-page mode) + Phase 2 (Library) +
 Phase 3 (Polish — bookmarks, sessions, phantom books, inline images)
-all live. ADRs at `docs/adr/`. Plan at
-`~/.claude/plans/moonlit-popping-sunset.md`.
+all live. ADRs at `docs/adr/`.
 
 ### Phase 3 highlights
 
@@ -99,3 +110,7 @@ all live. ADRs at `docs/adr/`. Plan at
   is set and the terminal supports a graphics protocol. Otherwise a
   `[image: alt]` placeholder takes the figure's place. Paged mode
   (`2`) always uses the placeholder.
+
+## License
+
+[Apache-2.0](./LICENSE) — Copyright 2026 Prajwal Mahajan.
