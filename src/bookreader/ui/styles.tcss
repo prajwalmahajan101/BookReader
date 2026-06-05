@@ -59,6 +59,13 @@ Screen {
     padding: 0 2;
 }
 
+/* In two-page mode the column carries two pages + a gutter, so the
+ * single-column cap (84) is too tight. 140 cells → ~68 per page +
+ * gutter, well inside an optimum reading measure for each side. */
+#reading-column.-paged {
+    max-width: 140;
+}
+
 ChapterView {
     width: 100%;
     height: auto;
