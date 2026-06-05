@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import contextlib
 import sqlite3
+import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -113,6 +114,58 @@ class BookRepo:
             (limit,),
         ).fetchall()
         return [_row_to_book(r) for r in rows]
+
+    def list_phantoms(self) -> list[Book]:
+        """Return every phantom (wishlist) row, newest first."""
+        rows = self._db.conn.execute(
+            "SELECT * FROM books WHERE is_phantom = 1 ORDER BY added_at DESC"
+        ).fetchall()
+        return [_row_to_book(r) for r in rows]
+
+    def create_phantom(self, *, title: str, authors: Iterable[str]) -> Book:
+        """Insert a phantom (wishlist) row with no file.
+
+        The identifier is a generated ``phantom:<uuid4>`` so it can never
+        collide with a real EPUB ``dc:identifier``. Call
+        :meth:`attach_epub` once a file is available.
+        """
+        identifier = f"phantom:{uuid.uuid4()}"
+        cur = self._db.conn.execute(
+            "INSERT INTO books "
+            "  (identifier, file_path, title, authors, added_at, is_phantom) "
+            "VALUES (?, NULL, ?, ?, ?, 1)",
+            (identifier, title, _join_authors(authors), _now()),
+        )
+        return self._require(int(cur.lastrowid or 0))
+
+    def attach_epub(
+        self,
+        book_id: int,
+        *,
+        identifier: str,
+        file_path: Path,
+        title: str,
+        authors: Iterable[str],
+    ) -> Book:
+        """Flip a phantom row into a real book once we have the EPUB.
+
+        Raises:
+            RepositoryError: If *book_id* doesn't exist or already points
+                at a real file.
+        """
+        existing = self.find_by_id(book_id)
+        if existing is None:
+            raise RepositoryError(f"book {book_id} not found")
+        if not existing.is_phantom:
+            raise RepositoryError(f"book {book_id} is already attached")
+        self._db.conn.execute(
+            "UPDATE books SET "
+            "  identifier = ?, file_path = ?, title = ?, authors = ?, "
+            "  is_phantom = 0 "
+            "WHERE id = ?",
+            (identifier, str(file_path), title, _join_authors(authors), book_id),
+        )
+        return self._require(book_id)
 
     def list_in_collection(self, collection_id: int) -> list[Book]:
         """Return every book in *collection_id*, ordered by most recent."""
@@ -342,16 +395,23 @@ class BookmarkRepo:
 
 def _row_to_book(row: sqlite3.Row) -> Book:
     """Build a :class:`Book` from a ``books`` row."""
+    raw_path = row["file_path"]
+    # Older schemas have no ``is_phantom`` column; default false if absent.
+    try:
+        phantom = bool(row["is_phantom"])
+    except (IndexError, KeyError):
+        phantom = False
     return Book(
         id=row["id"],
         identifier=row["identifier"],
-        file_path=Path(row["file_path"]),
+        file_path=Path(raw_path) if raw_path else None,
         title=row["title"],
         authors=_split_authors(row["authors"] or ""),
         rating=row["rating"],
         added_at=row["added_at"],
         completed_at=row["completed_at"],
         last_opened_at=row["last_opened_at"],
+        is_phantom=phantom,
     )
 
 
