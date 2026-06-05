@@ -36,6 +36,8 @@ from textual.widgets import (
 )
 
 from bookreader.core.logging import get_logger
+from bookreader.ui.screens.collections import CollectionGroup, CollectionsScreen
+from bookreader.ui.screens.wishlist import WishlistScreen
 from bookreader.ui.widgets.book_row import (
     authors_cell,
     rating_cell,
@@ -146,6 +148,8 @@ class LibraryScreen(Screen[None]):
     BINDINGS: ClassVar[list[BindingType]] = [
         Binding("a", "add_book", "Add"),
         Binding("A,shift+a", "add_wishlist", "Wishlist"),
+        Binding("C,shift+c", "open_collections", "Collections"),
+        Binding("W,shift+w", "open_wishlist", "Wishlist list"),
         Binding("d,delete", "remove_book", "Remove"),
         Binding("c", "toggle_complete", "Mark done"),
         Binding("i,enter", "open_book", "Open"),
@@ -350,6 +354,47 @@ class LibraryScreen(Screen[None]):
             self._reload()
 
         self.app.push_screen(_AddWishlistPrompt(), _after)
+
+    def action_open_collections(self) -> None:
+        """Show every book grouped by collection; Enter opens the pick."""
+        collections = self._service.list_collections()
+        groups = [
+            CollectionGroup(c.name, tuple(self._service.list_books_in(c.id)))
+            for c in collections
+        ]
+        self.app.push_screen(CollectionsScreen(groups), self._after_collection_pick)
+
+    def _after_collection_pick(self, book: Book | None) -> None:
+        """Open a real book picked from the collections modal."""
+        if book is None:
+            return
+        if book.file_path is None:
+            self.notify(
+                "Wishlist entry — use 'bookreader attach' or open from the library",
+                title="No file attached",
+                timeout=4,
+            )
+            return
+        self.app.action_open_book(book)  # type: ignore[attr-defined]
+
+    def action_open_wishlist(self) -> None:
+        """Show wishlist (phantom) books; ``d`` inside removes them."""
+        screen = WishlistScreen(self._service.list_phantoms())
+
+        def _after(_picked: Book | None) -> None:
+            for deleted_id in screen.deleted_ids:
+                try:
+                    self._service.remove_book(deleted_id)
+                except Exception as exc:  # central handler shows the error
+                    self.notify(
+                        str(exc),
+                        title="Remove failed",
+                        severity="error",
+                        timeout=6,
+                    )
+            self._reload()
+
+        self.app.push_screen(screen, _after)
 
     def action_remove_book(self) -> None:
         """Remove the highlighted book."""
