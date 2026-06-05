@@ -40,6 +40,7 @@ from bookreader.ui.widgets.book_row import (
     authors_cell,
     rating_cell,
     status_cell,
+    time_cell,
     title_cell,
 )
 from bookreader.ui.widgets.collection_list import CollectionFilter, CollectionList
@@ -181,7 +182,7 @@ class LibraryScreen(Screen[None]):
         """Configure table columns and load the first slice."""
         self.title = "Library"
         table = self.query_one("#library-table", DataTable)
-        table.add_columns("·", "Title", "Author", "Rating")
+        table.add_columns("·", "Title", "Author", "Rating", "Time")
         self._reload()
 
     # ----- reload ----------------------------------------------------------
@@ -221,11 +222,13 @@ class LibraryScreen(Screen[None]):
         table = self.query_one("#library-table", DataTable)
         table.clear()
         for book in books:
+            minutes = self._service.minutes_read(book.id)
             table.add_row(
                 status_cell(book, reading_ids=reading_ids),
                 title_cell(book),
                 authors_cell(book),
                 rating_cell(book),
+                time_cell(minutes),
                 key=str(book.id),
             )
 
