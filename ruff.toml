@@ -12,12 +12,11 @@ select = [
     "RUF",           # ruff-specific
     "D",             # pydocstyle
     "ANN",           # annotations
-    "TCH",           # type-checking-only imports
 ]
 ignore = [
-    "D203",  # 1 blank line before class docstring (conflicts with D211)
-    "D213",  # multi-line summary second line (conflicts with D212)
-    "ANN101", "ANN102",  # self / cls type hints (deprecated)
+    "D203",   # 1 blank line before class docstring (conflicts with D211)
+    "D213",   # multi-line summary second line (conflicts with D212)
+    "ANN401", # Any at module boundaries (ebooklib has no typing)
 ]
 
 [lint.per-file-ignores]

@@ -11,9 +11,9 @@ Layout (IDE three-panel pattern):
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
-from textual.binding import Binding
+from textual.binding import Binding, BindingType
 from textual.containers import Horizontal, VerticalScroll
 from textual.screen import Screen
 from textual.widgets import Footer, Header
@@ -34,7 +34,7 @@ log = get_logger(__name__)
 class ReaderScreen(Screen[None]):
     """The single-file reader. Owns navigation and persistence."""
 
-    BINDINGS = [
+    BINDINGS: ClassVar[list[BindingType]] = [
         Binding("j,down", "scroll_line(+1)", "Down", show=False),
         Binding("k,up", "scroll_line(-1)", "Up", show=False),
         Binding("space,pagedown", "scroll_page(+1)", "Page ↓"),
