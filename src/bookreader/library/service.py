@@ -91,6 +91,60 @@ class LibraryService:
         log.info("library add: %s [%s]", parsed.title, parsed.identifier)
         return book
 
+    def add_wishlist(
+        self,
+        title: str,
+        authors: Iterable[str] = (),
+        *,
+        collection_name: str | None = "Want to Read",
+    ) -> Book:
+        """Insert a phantom (file-less) book and add it to a collection.
+
+        Args:
+            title: Book title.
+            authors: Author names, may be empty.
+            collection_name: Collection to assign the row to; defaults to
+                the seeded ``Want to Read`` collection. Pass ``None`` to
+                skip assignment.
+
+        Returns:
+            The newly-inserted phantom :class:`Book`.
+        """
+        if not title.strip():
+            raise ValueError("title must not be empty")
+        book = self._books.create_phantom(title=title.strip(), authors=list(authors))
+        if collection_name:
+            col = self._collections.find_by_name(collection_name)
+            if col is not None:
+                self._collections.add_book(col.id, book.id)
+        log.info("library wishlist add: %s", title)
+        return book
+
+    def attach_epub(self, book_id: int, path: Path) -> Book:
+        """Parse *path* and promote a phantom row into a real book.
+
+        Existing collection memberships, ratings, and completion stamps
+        survive the upgrade.
+
+        Raises:
+            BookReaderError: From the EPUB parser if *path* is unreadable.
+            RepositoryError: If *book_id* is missing or already attached.
+        """
+        parsed = open_book(path)
+        book = self._books.attach_epub(
+            book_id,
+            identifier=parsed.identifier,
+            file_path=path,
+            title=parsed.title,
+            authors=parsed.authors,
+        )
+        log.info("library attach: book=%s file=%s", book_id, path)
+        return book
+
+    def list_phantoms(self) -> list[Book]:
+        """Return every phantom (wishlist) book."""
+        return self._books.list_phantoms()
+
     def remove_book(self, book_id: int) -> None:
         """Delete a book and all its dependent rows."""
         self._books.delete(book_id)
