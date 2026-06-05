@@ -57,6 +57,15 @@ ChapterView {
     height: auto;
 }
 
+PagedView {
+    width: 100%;
+    height: 1fr;
+}
+
+ChapterView.-hidden, PagedView.-hidden {
+    display: none;
+}
+
 StatusBar {
     height: 1;
     padding: 0 2;
