@@ -8,8 +8,12 @@ Two entry modes:
 - ``bookreader`` (no arg) — launches the library screen. Selecting a row
   pushes the reader; quitting the reader pops back to the library.
 
-Owns theme state and routes BookReader exceptions to a notification widget
-so a bad book never crashes the app.
+Themes live in Textual's first-class theme system
+(:meth:`App.register_theme`) so the command palette, header, footer,
+notifications, and scrollbars all adapt automatically.
+
+Owns BookReader's exception routing — bad-book errors surface as
+notifications, never crash the app.
 """
 
 from __future__ import annotations
@@ -17,8 +21,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, ClassVar
 
 from textual.app import App
+from textual.theme import Theme
 
-from bookreader.core.config import Settings, Theme, load_settings
+from bookreader.core.config import Settings, ThemeName, load_settings
 from bookreader.core.exceptions import BookReaderError
 from bookreader.core.logging import get_logger
 from bookreader.epub.reader import open_book
@@ -33,7 +38,67 @@ if TYPE_CHECKING:
 
 log = get_logger(__name__)
 
-_THEME_ORDER: tuple[Theme, ...] = ("dark", "light", "sepia")
+
+# Theme names are kept short in :class:`Settings` and prefixed for Textual.
+_THEME_PREFIX = "bookreader-"
+_THEME_ORDER: tuple[ThemeName, ...] = ("dark", "light", "sepia")
+
+
+def _build_themes() -> list[Theme]:
+    """Return the three custom themes registered with the app.
+
+    Each theme supplies the minimum semantic slots Textual needs:
+
+    - ``primary`` and ``accent`` drive focus borders, key hints, palette
+      selection.
+    - ``foreground`` / ``background`` set body text and screen background.
+    - ``surface`` / ``panel`` / ``boost`` colour the chrome (header bar,
+      sidebars, status strip).
+    """
+    return [
+        Theme(
+            name=f"{_THEME_PREFIX}dark",
+            primary="#89b4fa",
+            accent="#94e2d5",
+            foreground="#cdd6f4",
+            background="#1e1e2e",
+            surface="#1e1e2e",
+            panel="#181825",
+            boost="#313244",
+            warning="#f9e2af",
+            error="#f38ba8",
+            success="#a6e3a1",
+            dark=True,
+        ),
+        Theme(
+            name=f"{_THEME_PREFIX}light",
+            primary="#2563eb",
+            accent="#0ea5e9",
+            foreground="#1f2328",
+            background="#fbf9f1",
+            surface="#fbf9f1",
+            panel="#f3efe1",
+            boost="#e7e1ce",
+            warning="#b45309",
+            error="#b91c1c",
+            success="#15803d",
+            dark=False,
+        ),
+        Theme(
+            name=f"{_THEME_PREFIX}sepia",
+            primary="#8a4b08",
+            accent="#9a5a12",
+            foreground="#3b2a14",
+            background="#f1e3c2",
+            surface="#f1e3c2",
+            panel="#e8d5a4",
+            boost="#dcc593",
+            warning="#92400e",
+            error="#9b1c1c",
+            success="#3f6212",
+            dark=False,
+        ),
+    ]
 
 
 class BookReaderApp(App[None]):
@@ -69,11 +134,13 @@ class BookReaderApp(App[None]):
         self._settings = settings or load_settings()
         self._library = library
         self._library_book_id = library_book_id
-        self._theme: Theme = self._settings.theme
 
     def on_mount(self) -> None:
-        """Apply the initial theme and push the entry screen."""
-        self._apply_theme(self._theme)
+        """Register themes, pick the initial one, push the entry screen."""
+        for theme in _build_themes():
+            self.register_theme(theme)
+        self.theme = _theme_id(self._settings.theme)
+
         if self._book is not None:
             self.push_screen(self._make_reader(self._book, library_book_id=self._library_book_id))
         elif self._library is not None:
@@ -112,17 +179,15 @@ class BookReaderApp(App[None]):
     # ----- theme handling --------------------------------------------------
 
     def action_cycle_theme(self) -> None:
-        """Advance to the next theme in :data:`_THEME_ORDER`."""
-        idx = _THEME_ORDER.index(self._theme)
-        self._apply_theme(_THEME_ORDER[(idx + 1) % len(_THEME_ORDER)])
-
-    def _apply_theme(self, theme: Theme) -> None:
-        """Swap theme classes on the root app element."""
-        for name in _THEME_ORDER:
-            self.remove_class(f"-theme-{name}")
-        self.add_class(f"-theme-{theme}")
-        self._theme = theme
-        self.notify(f"theme: {theme}", timeout=2)
+        """Cycle through the registered BookReader themes."""
+        current = _theme_short(self.theme)
+        try:
+            idx = _THEME_ORDER.index(current)
+        except ValueError:
+            idx = -1
+        nxt = _THEME_ORDER[(idx + 1) % len(_THEME_ORDER)]
+        self.theme = _theme_id(nxt)
+        self.notify(f"theme: {nxt}", timeout=2)
 
     # ----- error routing ---------------------------------------------------
 
@@ -133,3 +198,17 @@ class BookReaderApp(App[None]):
             self.notify(str(error), title="Error", severity="error", timeout=6)
             return
         super()._handle_exception(error)
+
+
+def _theme_id(short: ThemeName) -> str:
+    """Map a short name (``dark``) to the registered theme id."""
+    return f"{_THEME_PREFIX}{short}"
+
+
+def _theme_short(full: str) -> ThemeName:
+    """Strip the ``bookreader-`` prefix back to the short name."""
+    if full.startswith(_THEME_PREFIX):
+        candidate = full[len(_THEME_PREFIX) :]
+        if candidate in _THEME_ORDER:
+            return candidate  # type: ignore[return-value]
+    return "dark"
