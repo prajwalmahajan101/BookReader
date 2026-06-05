@@ -134,15 +134,11 @@ class BookRepo:
     def mark_completed(self, book_id: int, completed: bool = True) -> None:
         """Stamp or clear ``completed_at`` for *book_id*."""
         value = _now() if completed else None
-        self._db.conn.execute(
-            "UPDATE books SET completed_at = ? WHERE id = ?", (value, book_id)
-        )
+        self._db.conn.execute("UPDATE books SET completed_at = ? WHERE id = ?", (value, book_id))
 
     def touch_opened(self, book_id: int) -> None:
         """Record that *book_id* was opened just now."""
-        self._db.conn.execute(
-            "UPDATE books SET last_opened_at = ? WHERE id = ?", (_now(), book_id)
-        )
+        self._db.conn.execute("UPDATE books SET last_opened_at = ? WHERE id = ?", (_now(), book_id))
 
     def delete(self, book_id: int) -> None:
         """Remove a book and all its FK-cascaded children."""
@@ -183,9 +179,7 @@ class CollectionRepo:
 
     def rename(self, collection_id: int, name: str) -> None:
         """Rename a collection."""
-        self._db.conn.execute(
-            "UPDATE collections SET name = ? WHERE id = ?", (name, collection_id)
-        )
+        self._db.conn.execute("UPDATE collections SET name = ? WHERE id = ?", (name, collection_id))
 
     def list_all(self) -> list[Collection]:
         """Return every collection in name order."""
@@ -196,9 +190,7 @@ class CollectionRepo:
 
     def find_by_name(self, name: str) -> Collection | None:
         """Return the collection named *name*, or ``None``."""
-        row = self._db.conn.execute(
-            "SELECT * FROM collections WHERE name = ?", (name,)
-        ).fetchone()
+        row = self._db.conn.execute("SELECT * FROM collections WHERE name = ?", (name,)).fetchone()
         return _row_to_collection(row) if row else None
 
     def add_book(self, collection_id: int, book_id: int) -> None:
@@ -302,9 +294,7 @@ class BookmarkRepo:
         """Initialize the repo."""
         self._db = db
 
-    def add(
-        self, book_id: int, chapter_index: int, scroll_offset: int, note: str = ""
-    ) -> Bookmark:
+    def add(self, book_id: int, chapter_index: int, scroll_offset: int, note: str = "") -> Bookmark:
         """Insert a new bookmark and return it."""
         now = _now()
         cur = self._db.conn.execute(

@@ -43,8 +43,7 @@ class TocTree(OptionList):
         self._entries = entries
         self._current_chapter_index: int | None = None
         options = [
-            Option(self._render(entry, current=False), id=str(i))
-            for i, entry in enumerate(entries)
+            Option(self._render(entry, current=False), id=str(i)) for i, entry in enumerate(entries)
         ]
         super().__init__(*options, id=id)
 
