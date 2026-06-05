@@ -13,12 +13,13 @@ from typing import TYPE_CHECKING
 from bookreader.core.logging import get_logger
 from bookreader.epub.reader import open_book
 from bookreader.library.database import Database
-from bookreader.library.models import Book, Collection, StoredPosition
+from bookreader.library.models import Book, Collection, Session, StoredPosition
 from bookreader.library.repository import (
     BookmarkRepo,
     BookRepo,
     CollectionRepo,
     PositionRepo,
+    SessionRepo,
 )
 
 if TYPE_CHECKING:
@@ -50,7 +51,11 @@ class LibraryService:
         self._collections = CollectionRepo(self._db)
         self._positions = PositionRepo(self._db)
         self._bookmarks = BookmarkRepo(self._db)
+        self._sessions = SessionRepo(self._db)
         self._seed_default_collections()
+        # Defensive: close any session left open by a crash on the prior run
+        # so total-time calculations don't double-count "now - last start".
+        self._sessions.close_orphans()
         # Late import — ``migrate_positions_json`` imports from this module.
         from bookreader.library.migrate import migrate_positions_json
 
@@ -71,6 +76,25 @@ class LibraryService:
     def bookmarks(self) -> BookmarkRepo:
         """Direct access to the bookmark repository."""
         return self._bookmarks
+
+    @property
+    def sessions(self) -> SessionRepo:
+        """Direct access to the session repository."""
+        return self._sessions
+
+    # ----- session helpers ------------------------------------------------
+
+    def start_session(self, book_id: int) -> Session:
+        """Open a new reading session for *book_id*."""
+        return self._sessions.start(book_id)
+
+    def end_session(self, session_id: int, *, pages_advanced: int = 0) -> None:
+        """Close a session (idempotent)."""
+        self._sessions.end(session_id, pages_advanced=pages_advanced)
+
+    def minutes_read(self, book_id: int) -> int:
+        """Total minutes recorded against *book_id*."""
+        return self._sessions.total_minutes_for(book_id)
 
     # ----- books -----------------------------------------------------------
 

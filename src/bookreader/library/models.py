@@ -78,3 +78,22 @@ class Bookmark:
     scroll_offset: int
     note: str
     created_at: str
+
+
+@dataclass(frozen=True, slots=True)
+class Session:
+    """A reading-session row.
+
+    Attributes:
+        id: Surrogate primary key.
+        book_id: FK to ``books.id``.
+        started_at: ISO-8601 UTC start time.
+        ended_at: ISO-8601 UTC end time, or ``None`` while still open.
+        pages_advanced: Net chapter / page progress made during the session.
+    """
+
+    id: int
+    book_id: int
+    started_at: str
+    ended_at: str | None
+    pages_advanced: int

@@ -16,7 +16,13 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from bookreader.core.exceptions import BookReaderError
-from bookreader.library.models import Book, Bookmark, Collection, StoredPosition
+from bookreader.library.models import (
+    Book,
+    Bookmark,
+    Collection,
+    Session,
+    StoredPosition,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -389,6 +395,80 @@ class BookmarkRepo:
 
 
 # ---------------------------------------------------------------------------
+# SessionRepo
+# ---------------------------------------------------------------------------
+
+
+class SessionRepo:
+    """CRUD for the ``sessions`` table."""
+
+    def __init__(self, db: Database) -> None:
+        """Initialize the repo."""
+        self._db = db
+
+    def start(self, book_id: int) -> Session:
+        """Insert a fresh session row for *book_id* and return it."""
+        now = _now()
+        cur = self._db.conn.execute(
+            "INSERT INTO sessions (book_id, started_at) VALUES (?, ?)",
+            (book_id, now),
+        )
+        return Session(
+            id=int(cur.lastrowid or 0),
+            book_id=book_id,
+            started_at=now,
+            ended_at=None,
+            pages_advanced=0,
+        )
+
+    def end(self, session_id: int, *, pages_advanced: int = 0) -> None:
+        """Stamp ``ended_at`` on *session_id* if still open. Idempotent."""
+        self._db.conn.execute(
+            "UPDATE sessions SET ended_at = ?, pages_advanced = ? "
+            "WHERE id = ? AND ended_at IS NULL",
+            (_now(), max(0, pages_advanced), session_id),
+        )
+
+    def close_orphans(self) -> int:
+        """Close any sessions that were left open by a crash. Returns count.
+
+        Uses ``started_at`` as the close time so we never inflate stats.
+        """
+        cur = self._db.conn.execute(
+            "UPDATE sessions SET ended_at = started_at WHERE ended_at IS NULL"
+        )
+        return cur.rowcount or 0
+
+    def list_for(self, book_id: int, limit: int = 10) -> list[Session]:
+        """Return the most recent sessions for *book_id*."""
+        rows = self._db.conn.execute(
+            "SELECT * FROM sessions WHERE book_id = ? "
+            "ORDER BY started_at DESC LIMIT ?",
+            (book_id, limit),
+        ).fetchall()
+        return [_row_to_session(r) for r in rows]
+
+    def total_minutes_for(self, book_id: int) -> int:
+        """Return the total reading time for *book_id*, in whole minutes."""
+        row = self._db.conn.execute(
+            "SELECT COALESCE(SUM(strftime('%s', ended_at) - strftime('%s', started_at)), 0) "
+            "AS seconds FROM sessions "
+            "WHERE book_id = ? AND ended_at IS NOT NULL",
+            (book_id,),
+        ).fetchone()
+        return int((row["seconds"] or 0) // 60)
+
+    def last_session_for(self, book_id: int) -> Session | None:
+        """Return the most recent closed session for *book_id*, or ``None``."""
+        row = self._db.conn.execute(
+            "SELECT * FROM sessions WHERE book_id = ? AND ended_at IS NOT NULL "
+            "ORDER BY started_at DESC LIMIT 1",
+            (book_id,),
+        ).fetchone()
+        return _row_to_session(row) if row else None
+
+
+# ---------------------------------------------------------------------------
 # Row → model adapters
 # ---------------------------------------------------------------------------
 
@@ -418,3 +498,14 @@ def _row_to_book(row: sqlite3.Row) -> Book:
 def _row_to_collection(row: sqlite3.Row) -> Collection:
     """Build a :class:`Collection` from a ``collections`` row."""
     return Collection(id=row["id"], name=row["name"], created_at=row["created_at"])
+
+
+def _row_to_session(row: sqlite3.Row) -> Session:
+    """Build a :class:`Session` from a ``sessions`` row."""
+    return Session(
+        id=row["id"],
+        book_id=row["book_id"],
+        started_at=row["started_at"],
+        ended_at=row["ended_at"],
+        pages_advanced=row["pages_advanced"],
+    )
