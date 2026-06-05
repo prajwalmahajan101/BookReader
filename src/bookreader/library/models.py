@@ -14,27 +14,34 @@ from pathlib import Path
 class Book:
     """A book row.
 
+    A book is either *real* (an EPUB on disk; ``file_path`` is set,
+    ``is_phantom`` is ``False``) or *phantom* (a wishlist entry with
+    title + authors only; ``file_path`` is ``None``).
+
     Attributes:
         id: Surrogate primary key.
-        identifier: EPUB ``dc:identifier`` or SHA-1 fallback. Unique.
-        file_path: Filesystem location of the EPUB.
+        identifier: EPUB ``dc:identifier`` for real books, or
+            ``phantom:<uuid4>`` for wishlist rows.
+        file_path: EPUB location, or ``None`` for phantom rows.
         title: Book title.
         authors: Tuple of author names.
         rating: User rating ``1..5`` or ``None``.
         added_at: ISO-8601 UTC timestamp.
         completed_at: ISO-8601 UTC timestamp; set when marked finished.
         last_opened_at: ISO-8601 UTC timestamp of the last reader session.
+        is_phantom: True when this is a wishlist row with no file.
     """
 
     id: int
     identifier: str
-    file_path: Path
+    file_path: Path | None
     title: str
     authors: tuple[str, ...]
     rating: int | None
     added_at: str
     completed_at: str | None
     last_opened_at: str | None
+    is_phantom: bool = False
 
 
 @dataclass(frozen=True, slots=True)
