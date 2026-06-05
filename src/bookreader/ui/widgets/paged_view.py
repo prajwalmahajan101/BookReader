@@ -143,11 +143,7 @@ class PagedView(Static):
         height = self.size.height
         if width <= 0 or height <= 0 or not self._chapter_text.plain:
             return ()
-        if (
-            self._cached_pages
-            and self._cached_width == width
-            and self._cached_height == height
-        ):
+        if self._cached_pages and self._cached_width == width and self._cached_height == height:
             return self._cached_pages
 
         page_width = max(1, (width - self._GUTTER) // 2)

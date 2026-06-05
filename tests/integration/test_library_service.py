@@ -42,9 +42,7 @@ def test_rate_and_complete_flow(service: LibraryService, sample_epub: Path) -> N
     assert any(b.id == book.id for b in service.list_books_in(finished.id))
 
 
-def test_collection_sync_replaces_membership(
-    service: LibraryService, sample_epub: Path
-) -> None:
+def test_collection_sync_replaces_membership(service: LibraryService, sample_epub: Path) -> None:
     book = service.add_book(sample_epub)
     a = service.create_collection("A")
     b = service.create_collection("B")
@@ -66,9 +64,7 @@ def test_position_roundtrips(service: LibraryService, sample_epub: Path) -> None
     assert pos.page_index is None
 
 
-def test_recents_orders_by_last_opened(
-    service: LibraryService, sample_epub: Path
-) -> None:
+def test_recents_orders_by_last_opened(service: LibraryService, sample_epub: Path) -> None:
     book = service.add_book(sample_epub)
     assert service.list_recent() == []  # not opened yet
     service.touch_opened(book.id)

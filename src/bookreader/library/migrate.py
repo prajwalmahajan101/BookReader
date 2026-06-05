@@ -80,9 +80,7 @@ def migrate_positions_json(
                 chapter_index=int(entry.get("chapter_index", 0)),
                 scroll_offset=int(entry.get("scroll_offset", 0)),
                 page_index=(
-                    int(entry["page_index"])
-                    if entry.get("page_index") is not None
-                    else None
+                    int(entry["page_index"]) if entry.get("page_index") is not None else None
                 ),
             )
             written += 1

@@ -36,9 +36,7 @@ def test_orphan_entries_skipped(tmp_path: Path) -> None:
     assert src.exists()  # not renamed when nothing was written
 
 
-def test_matching_entries_written_and_file_renamed(
-    tmp_path: Path, sample_epub: Path
-) -> None:
+def test_matching_entries_written_and_file_renamed(tmp_path: Path, sample_epub: Path) -> None:
     service = LibraryService(Database(tmp_path / "lib.db"))
     book = service.add_book(sample_epub)
 
