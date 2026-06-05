@@ -6,3 +6,4 @@ platformdirs>=4.0
 pydantic>=2.6
 pydantic-settings>=2.2
 click>=8.1
+textual-image>=0.6

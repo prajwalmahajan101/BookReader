@@ -10,11 +10,11 @@ import hashlib
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
-from ebooklib import ITEM_DOCUMENT, epub
+from ebooklib import ITEM_DOCUMENT, ITEM_IMAGE, epub
 
 from bookreader.core.exceptions import EpubParseError
 from bookreader.core.logging import get_logger
-from bookreader.epub.chapter import Book, Chapter, TocEntry
+from bookreader.epub.chapter import Book, Chapter, ImageResource, TocEntry
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -50,8 +50,15 @@ def open_book(path: Path) -> Book:
     title = _first_metadata(book, "DC", "title") or path.stem
     authors = tuple(_all_metadata(book, "DC", "creator"))
     toc = tuple(_flatten_toc(book.toc, chapters))
+    images = _extract_images(book)
 
-    log.info("opened EPUB %s (%d chapters, id=%s)", path, len(chapters), identifier)
+    log.info(
+        "opened EPUB %s (%d chapters, %d images, id=%s)",
+        path,
+        len(chapters),
+        len(images),
+        identifier,
+    )
     return Book(
         path=path,
         identifier=identifier,
@@ -59,7 +66,31 @@ def open_book(path: Path) -> Book:
         authors=authors,
         chapters=tuple(chapters),
         toc=toc,
+        images=images,
     )
+
+
+def _extract_images(book: epub.EpubBook) -> dict[str, ImageResource]:
+    """Pull every image item out of the EPUB, keyed by canonical href."""
+    images: dict[str, ImageResource] = {}
+    for item in book.get_items_of_type(ITEM_IMAGE):
+        href = _canonical_href(item.get_name())
+        try:
+            data = item.get_content()
+        except Exception as exc:  # ebooklib raises a variety
+            log.warning("image %s unreadable: %s", href, exc)
+            continue
+        mime = getattr(item, "media_type", "") or "image/octet-stream"
+        images[href] = ImageResource(href=href, data=data, mime=mime)
+    return images
+
+
+def _canonical_href(href: str) -> str:
+    """Strip ``./`` prefixes and anchors so image lookup is straightforward."""
+    href = href.split("#", 1)[0]
+    while href.startswith("./"):
+        href = href[2:]
+    return href
 
 
 def _extract_chapters(book: epub.EpubBook) -> list[Chapter]:

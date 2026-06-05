@@ -45,6 +45,22 @@ class TocEntry:
 
 
 @dataclass(frozen=True, slots=True)
+class ImageResource:
+    """An image embedded in the EPUB.
+
+    Attributes:
+        href: Manifest href, canonicalised (no leading ``./``, no
+            anchors).
+        data: Raw bytes of the image file.
+        mime: MIME type from the EPUB manifest (``image/jpeg``, ``…``).
+    """
+
+    href: str
+    data: bytes
+    mime: str
+
+
+@dataclass(frozen=True, slots=True)
 class Book:
     """A loaded EPUB ready to render.
 
@@ -56,6 +72,8 @@ class Book:
         authors: Tuple of author names.
         chapters: Spine, in reading order.
         toc: Flattened table of contents.
+        images: Mapping of canonical href to :class:`ImageResource` for
+            every image in the EPUB. Empty when the book has no figures.
     """
 
     path: Path
@@ -64,3 +82,4 @@ class Book:
     authors: tuple[str, ...]
     chapters: tuple[Chapter, ...]
     toc: tuple[TocEntry, ...] = field(default_factory=tuple)
+    images: dict[str, ImageResource] = field(default_factory=dict)
