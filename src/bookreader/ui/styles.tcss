@@ -198,3 +198,19 @@ BookmarksScreen {
     padding: 2 4;
     color: $foreground-muted;
 }
+
+/* ---------- Collections & Wishlist overview screens ---------- */
+
+CollectionsScreen, WishlistScreen {
+    align: center middle;
+}
+#collections-list, #wishlist-list {
+    width: 80;
+    height: 70%;
+    background: $surface;
+    border: solid $boost;
+}
+#collections-empty, #wishlist-empty {
+    padding: 2 4;
+    color: $foreground-muted;
+}
