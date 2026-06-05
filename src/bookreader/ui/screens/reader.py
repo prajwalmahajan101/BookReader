@@ -159,6 +159,9 @@ class ReaderScreen(Screen[None]):
         if self._book.authors:
             self.sub_title = " · ".join(self._book.authors)
 
+        # Give the chapter view the book context so it can resolve images.
+        self.query_one("#chapter", ChapterView).attach_book(self._book)
+
         saved = self._load_saved_position()
         start_chapter = saved.chapter_index if saved else 0
         start_offset = saved.scroll_offset if saved else 0
