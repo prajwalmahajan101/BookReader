@@ -151,9 +151,7 @@ class PagedView(Static):
         for row in range(page_h):
             left = _pad(lines[left_start + row], col_w) if left_start + row < len(lines) else blank
             right = (
-                _pad(lines[right_start + row], col_w)
-                if right_start + row < len(lines)
-                else Text()
+                _pad(lines[right_start + row], col_w) if right_start + row < len(lines) else Text()
             )
             if row:
                 out.append("\n")

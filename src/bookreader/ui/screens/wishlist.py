@@ -45,10 +45,7 @@ class WishlistScreen(ModalScreen[Book | None]):
         yield Header(show_clock=False, icon="⭐")
         if self._books:
             yield OptionList(
-                *[
-                    Option(self._format(book), id=str(i))
-                    for i, book in enumerate(self._books)
-                ],
+                *[Option(self._format(book), id=str(i)) for i, book in enumerate(self._books)],
                 id="wishlist-list",
             )
         else:

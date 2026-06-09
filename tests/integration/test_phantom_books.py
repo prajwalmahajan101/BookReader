@@ -43,9 +43,7 @@ def test_attach_epub_promotes_phantom(service: LibraryService, sample_epub: Path
     assert "Want to Read" in cols
 
 
-def test_attach_rejects_already_real_book(
-    service: LibraryService, sample_epub: Path
-) -> None:
+def test_attach_rejects_already_real_book(service: LibraryService, sample_epub: Path) -> None:
     from bookreader.library.repository import RepositoryError
 
     real = service.add_book(sample_epub)
@@ -53,9 +51,7 @@ def test_attach_rejects_already_real_book(
         service.attach_epub(real.id, sample_epub)
 
 
-def test_list_phantoms_filters_correctly(
-    service: LibraryService, sample_epub: Path
-) -> None:
+def test_list_phantoms_filters_correctly(service: LibraryService, sample_epub: Path) -> None:
     service.add_book(sample_epub)
     service.add_wishlist("A", [])
     service.add_wishlist("B", [])

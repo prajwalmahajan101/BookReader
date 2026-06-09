@@ -104,7 +104,8 @@ class Database:
 def _iter_migrations() -> Iterator[tuple[int, str]]:
     """Yield ``(version, sql)`` pairs from the migrations package, sorted."""
     files = sorted(
-        f for f in resources.files(_MIGRATIONS_PACKAGE).iterdir() if f.name.endswith(".sql")
+        (f for f in resources.files(_MIGRATIONS_PACKAGE).iterdir() if f.name.endswith(".sql")),
+        key=lambda f: f.name,
     )
     for f in files:
         try:

@@ -16,9 +16,7 @@ def _book_with_image(html: str, image_href: str) -> Book:
         title="X",
         html=html,
     )
-    images = {
-        image_href: ImageResource(href=image_href, data=b"FAKE", mime="image/png")
-    }
+    images = {image_href: ImageResource(href=image_href, data=b"FAKE", mime="image/png")}
     return Book(
         path=Path("/tmp/x.epub"),
         identifier="test",
@@ -32,7 +30,7 @@ def _book_with_image(html: str, image_href: str) -> Book:
 
 def test_emits_text_then_image_then_text() -> None:
     book = _book_with_image(
-        '<html><body><p>before</p>'
+        "<html><body><p>before</p>"
         '<img src="../Images/cover.png" alt="cover">'
         "<p>after</p></body></html>",
         image_href="OEBPS/Images/cover.png",
@@ -56,9 +54,7 @@ def test_unresolved_image_falls_back_to_placeholder_inside_text() -> None:
     blocks = render_chapter_blocks(book.chapters[0], book)
     # No ImageBlock — placeholder text lives inside a TextBlock
     assert all(isinstance(b, TextBlock) for b in blocks)
-    combined = "\n".join(
-        b.text.plain for b in blocks if isinstance(b, TextBlock)
-    )
+    combined = "\n".join(b.text.plain for b in blocks if isinstance(b, TextBlock))
     assert "[image: missing]" in combined
 
 

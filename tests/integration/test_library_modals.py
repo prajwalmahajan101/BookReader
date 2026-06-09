@@ -44,9 +44,7 @@ async def test_collections_screen_groups_real_and_phantom_books(
 ) -> None:
     real = service.add_book(sample_epub)
     phantom = service.add_wishlist("Babel", ["R.F. Kuang"])
-    currently_reading = next(
-        c for c in service.list_collections() if c.name == "Currently Reading"
-    )
+    currently_reading = next(c for c in service.list_collections() if c.name == "Currently Reading")
     service.assign_to_collection(real.id, currently_reading.id)
 
     async with _Harness().run_test() as pilot:
@@ -56,9 +54,7 @@ async def test_collections_screen_groups_real_and_phantom_books(
         screen = pilot.app.screen
         assert isinstance(screen, CollectionsScreen)
         lst = screen.query_one("#collections-list", OptionList)
-        book_ids = [
-            lst.get_option_at_index(i).id for i in range(lst.option_count)
-        ]
+        book_ids = [lst.get_option_at_index(i).id for i in range(lst.option_count)]
         # Two real picks (one real book, one phantom); the rest are headers.
         assert sum(1 for oid in book_ids if oid is not None) == 2
 
