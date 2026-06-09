@@ -1,5 +1,7 @@
 # BookReader
 
+[![test](https://github.com/prajwalmahajan101/BookReader/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/prajwalmahajan101/BookReader/actions/workflows/test.yml)
+
 > A terminal EPUB reader and personal library, built with [Textual](https://textual.textualize.io/) — for people who'd rather read in their terminal than launch a desktop app.
 
 BookReader opens any EPUB in a focused two-column or two-page TUI, remembers where you left off, indexes everything you've added into a small SQLite library, and tracks per-book reading time and bookmarks. Inline kitty / sixel image rendering is on by an environment toggle when your terminal supports a graphics protocol; otherwise figures fall back to `[image: alt]` placeholders.
