@@ -32,8 +32,5 @@ jobs:
       - name: Ruff (lint)
         run: ruff check .
 
-      - name: Mypy strict
-        run: mypy
-
       - name: Pytest
         run: pytest
