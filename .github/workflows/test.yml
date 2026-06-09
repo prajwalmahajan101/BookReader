@@ -8,7 +8,7 @@ on:
 
 jobs:
   test:
-    name: lint + typecheck + pytest (Python ${{ matrix.python-version }})
+    name: ruff + mypy + pytest (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -31,6 +31,12 @@ jobs:
 
       - name: Ruff (lint)
         run: ruff check .
+
+      - name: Ruff (format check)
+        run: ruff format --check .
+
+      - name: Mypy strict
+        run: mypy
 
       - name: Pytest
         run: pytest

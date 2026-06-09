@@ -13,6 +13,7 @@ import io
 from typing import TYPE_CHECKING
 
 from textual.containers import Vertical
+from textual.widget import Widget
 from textual.widgets import Static
 
 from bookreader.core.config import load_settings
@@ -76,7 +77,7 @@ class ChapterView(Vertical):
             self.mount(Static(render_chapter(chapter)))
             return
 
-        widgets: list[Static] = []
+        widgets: list[Widget] = []
         for block in blocks:
             if isinstance(block, TextBlock):
                 widgets.append(Static(block.text))
@@ -85,13 +86,13 @@ class ChapterView(Vertical):
         if widgets:
             self.mount_all(widgets)
 
-    def _build_image_widget(self, block: ImageBlock) -> Static:
+    def _build_image_widget(self, block: ImageBlock) -> Widget:
         """Return an image widget when supported, else a placeholder."""
         if not self._settings.images_enabled:
             return Static(f"[image: {block.alt}]", classes="image-placeholder")
         try:
-            from PIL import Image as PILImage  # type: ignore[import-not-found]
-            from textual_image.widget import Image  # type: ignore[import-not-found]
+            from PIL import Image as PILImage
+            from textual_image.widget import Image
 
             img = PILImage.open(io.BytesIO(block.data))
             return Image(img)

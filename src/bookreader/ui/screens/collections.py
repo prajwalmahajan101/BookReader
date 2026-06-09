@@ -93,9 +93,7 @@ class CollectionsScreen(ModalScreen[Book | None]):
         """Render a single book row: title + path/wishlist marker."""
         text = Text()
         text.append(book.title, style="bold")
-        secondary = (
-            str(book.file_path) if book.file_path is not None else "[wishlist]"
-        )
+        secondary = str(book.file_path) if book.file_path is not None else "[wishlist]"
         text.append("\n  ")
         text.append(secondary, style="dim")
         return text

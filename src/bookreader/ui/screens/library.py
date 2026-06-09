@@ -52,7 +52,7 @@ if TYPE_CHECKING:
 
     from textual.app import ComposeResult
 
-    from bookreader.library.models import Book
+    from bookreader.library.models import Book, Collection
     from bookreader.library.service import LibraryService
 
 log = get_logger(__name__)
@@ -244,8 +244,7 @@ class LibraryScreen(Screen[None]):
         wishlist = sum(1 for b in all_books if b.is_phantom)
         wish_part = f" · {wishlist} wishlist" if wishlist else ""
         self.query_one("#library-status", Static).update(
-            f"{total} books · {finished} finished{wish_part}"
-            f" · filter: {self._current_filter.label}"
+            f"{total} books · {finished} finished{wish_part} · filter: {self._current_filter.label}"
         )
 
     def _reading_set(self) -> set[int]:
@@ -346,9 +345,7 @@ class LibraryScreen(Screen[None]):
             try:
                 self._service.add_wishlist(title=title, authors=authors)
             except Exception as exc:
-                self.notify(
-                    str(exc), title="Wishlist failed", severity="error", timeout=6
-                )
+                self.notify(str(exc), title="Wishlist failed", severity="error", timeout=6)
                 return
             self.notify(f"Added: {title}", timeout=3)
             self._reload()
@@ -359,8 +356,7 @@ class LibraryScreen(Screen[None]):
         """Show every book grouped by collection; Enter opens the pick."""
         collections = self._service.list_collections()
         groups = [
-            CollectionGroup(c.name, tuple(self._service.list_books_in(c.id)))
-            for c in collections
+            CollectionGroup(c.name, tuple(self._service.list_books_in(c.id))) for c in collections
         ]
         self.app.push_screen(CollectionsScreen(groups), self._after_collection_pick)
 
@@ -458,7 +454,7 @@ class LibraryScreen(Screen[None]):
         """Force a reload — used by the app after the reader screen pops."""
         self._reload()
 
-    def collections(self) -> list:
+    def collections(self) -> list[Collection]:
         """Expose the latest collection list (for the detail screen)."""
         return self._service.list_collections()
 

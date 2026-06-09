@@ -15,9 +15,7 @@ def service(tmp_path: Path) -> LibraryService:
     return LibraryService(Database(tmp_path / "lib.db"))
 
 
-def test_start_then_end_session_records_row(
-    service: LibraryService, sample_epub: Path
-) -> None:
+def test_start_then_end_session_records_row(service: LibraryService, sample_epub: Path) -> None:
     book = service.add_book(sample_epub)
     session = service.start_session(book.id)
     assert session.id > 0
@@ -58,9 +56,7 @@ def test_close_orphans_stamps_open_sessions(tmp_path: Path, sample_epub: Path) -
         svc2.close()
 
 
-def test_minutes_read_zero_when_no_sessions(
-    service: LibraryService, sample_epub: Path
-) -> None:
+def test_minutes_read_zero_when_no_sessions(service: LibraryService, sample_epub: Path) -> None:
     book = service.add_book(sample_epub)
     assert service.minutes_read(book.id) == 0
 

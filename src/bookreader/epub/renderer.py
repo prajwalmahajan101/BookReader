@@ -21,7 +21,7 @@ import posixpath
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from bs4 import BeautifulSoup, NavigableString, Tag
+from bs4 import BeautifulSoup, NavigableString, PageElement, Tag
 from rich.text import Text
 
 from bookreader.core.exceptions import ChapterRenderError
@@ -139,7 +139,7 @@ def render_chapter_blocks(chapter: Chapter, book: Book) -> list[ChapterBlock]:
             blocks.append(TextBlock(text=buf))
         current[0] = Text()
 
-    def visit(node: Tag | NavigableString, style: str) -> None:
+    def visit(node: PageElement, style: str) -> None:
         buf = current[0]
         if isinstance(node, NavigableString):
             text = str(node)
@@ -147,6 +147,7 @@ def render_chapter_blocks(chapter: Chapter, book: Book) -> list[ChapterBlock]:
                 buf.append(text, style=style or None)
             return
         if not isinstance(node, Tag):
+            # bs4 can yield Comment, Doctype, etc. from .children — skip.
             return
         tag = (node.name or "").lower()
         if tag in {"script", "style", "head", "meta", "link", "nav"}:
@@ -205,7 +206,7 @@ def _resolve_image(node: Tag, chapter: Chapter, book: Book) -> ImageBlock | None
     )
 
 
-def _walk(node: Tag | NavigableString, out: Text, *, style: str) -> None:
+def _walk(node: PageElement, out: Text, *, style: str) -> None:
     """Depth-first traversal that emits styled text into *out*."""
     if isinstance(node, NavigableString):
         text = str(node)
@@ -214,6 +215,7 @@ def _walk(node: Tag | NavigableString, out: Text, *, style: str) -> None:
         return
 
     if not isinstance(node, Tag):
+        # bs4 can yield Comment, Doctype, etc. from .children — skip.
         return
 
     tag = node.name.lower() if node.name else ""

@@ -43,7 +43,8 @@ class TocTree(OptionList):
         self._entries = entries
         self._current_chapter_index: int | None = None
         options = [
-            Option(self._render(entry, current=False), id=str(i)) for i, entry in enumerate(entries)
+            Option(self._render_row(entry, current=False), id=str(i))
+            for i, entry in enumerate(entries)
         ]
         super().__init__(*options, id=id)
 
@@ -66,11 +67,11 @@ class TocTree(OptionList):
         if previous_row is not None and previous_row != target_row:
             self.replace_option_prompt_at_index(
                 previous_row,
-                self._render(self._entries[previous_row], current=False),
+                self._render_row(self._entries[previous_row], current=False),
             )
         self.replace_option_prompt_at_index(
             target_row,
-            self._render(self._entries[target_row], current=True),
+            self._render_row(self._entries[target_row], current=True),
         )
         # Move the cursor to the current chapter so the user lands there
         # whenever the sidebar is focused.
@@ -86,7 +87,7 @@ class TocTree(OptionList):
         return None
 
     @staticmethod
-    def _render(entry: TocEntry, *, current: bool) -> Text:
+    def _render_row(entry: TocEntry, *, current: bool) -> Text:
         """Render a TOC row with depth indentation and a current-marker."""
         indent = "  " * entry.depth
         marker = _MARKER_CURRENT if current else _MARKER_IDLE

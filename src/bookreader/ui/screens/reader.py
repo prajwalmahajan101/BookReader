@@ -32,7 +32,9 @@ from textual.screen import ModalScreen, Screen
 from textual.widgets import Button, Footer, Header, Input, Static
 
 from bookreader.core.logging import get_logger
+from bookreader.library.models import StoredPosition
 from bookreader.state.bookmarks_json import JsonBookmarkStore
+from bookreader.state.positions import Position
 from bookreader.ui.screens.bookmarks import BookmarkRow, BookmarksScreen
 from bookreader.ui.widgets.chapter_view import ChapterView
 from bookreader.ui.widgets.paged_view import PagedView
@@ -80,6 +82,7 @@ class _BookmarkNotePrompt(ModalScreen[str | None]):
     def action_cancel(self) -> None:
         """Esc closes."""
         self.dismiss(None)
+
 
 log = get_logger(__name__)
 
@@ -395,7 +398,7 @@ class ReaderScreen(Screen[None]):
             # Tell the library screen to refresh counts / last-opened.
             for screen in self.app.screen_stack:
                 if hasattr(screen, "reload"):
-                    screen.reload()  # type: ignore[attr-defined]
+                    screen.reload()
         else:
             self.app.exit()
 
@@ -489,7 +492,7 @@ class ReaderScreen(Screen[None]):
             except Exception as exc:
                 log.warning("position save (library) failed: %s", exc)
 
-    def _load_saved_position(self) -> object | None:
+    def _load_saved_position(self) -> StoredPosition | Position | None:
         """Find a saved position; library DB wins over the JSON store."""
         if self._library is not None and self._library_book_id is not None:
             lib_pos = self._library.get_position(self._library_book_id)
@@ -584,21 +587,21 @@ class ReaderScreen(Screen[None]):
                     )
                 )
             return rows
-        for bm in self._bookmarks_json.list_for(self._book.identifier):
+        for jbm in self._bookmarks_json.list_for(self._book.identifier):
             title = (
-                chapters[bm.chapter_index].title
-                if 0 <= bm.chapter_index < len(chapters)
-                else f"Chapter {bm.chapter_index + 1}"
+                chapters[jbm.chapter_index].title
+                if 0 <= jbm.chapter_index < len(chapters)
+                else f"Chapter {jbm.chapter_index + 1}"
             )
             rows.append(
                 BookmarkRow(
-                    id=bm.id,
+                    id=jbm.id,
                     chapter_title=title,
-                    chapter_index=bm.chapter_index,
-                    scroll_offset=bm.scroll_offset,
+                    chapter_index=jbm.chapter_index,
+                    scroll_offset=jbm.scroll_offset,
                     page_index=None,
-                    note=bm.note,
-                    created_at=bm.created_at,
+                    note=jbm.note,
+                    created_at=jbm.created_at,
                 )
             )
         return rows

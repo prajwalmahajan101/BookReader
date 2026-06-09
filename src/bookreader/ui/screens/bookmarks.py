@@ -69,10 +69,7 @@ class BookmarksScreen(ModalScreen[BookmarkRow | None]):
         yield Header(show_clock=False, icon="🔖")
         if self._rows:
             yield OptionList(
-                *[
-                    Option(self._format(row), id=str(i))
-                    for i, row in enumerate(self._rows)
-                ],
+                *[Option(self._format(row), id=str(i)) for i, row in enumerate(self._rows)],
                 id="bookmarks-list",
             )
         else:

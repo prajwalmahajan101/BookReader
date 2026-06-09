@@ -442,8 +442,7 @@ class SessionRepo:
     def list_for(self, book_id: int, limit: int = 10) -> list[Session]:
         """Return the most recent sessions for *book_id*."""
         rows = self._db.conn.execute(
-            "SELECT * FROM sessions WHERE book_id = ? "
-            "ORDER BY started_at DESC LIMIT ?",
+            "SELECT * FROM sessions WHERE book_id = ? ORDER BY started_at DESC LIMIT ?",
             (book_id, limit),
         ).fetchall()
         return [_row_to_session(r) for r in rows]

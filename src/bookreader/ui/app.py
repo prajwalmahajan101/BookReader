@@ -152,6 +152,15 @@ class BookReaderApp(App[None]):
 
     def action_open_book(self, lib_book: LibBook) -> None:
         """Open a book selected from the library screen."""
+        if lib_book.file_path is None:
+            # Phantom (wishlist) row — no EPUB on disk to open.
+            self.notify(
+                "This is a wishlist entry; attach an EPUB before opening.",
+                title="No file",
+                severity="warning",
+                timeout=6,
+            )
+            return
         try:
             parsed = open_book(lib_book.file_path)
         except BookReaderError as exc:
@@ -210,5 +219,5 @@ def _theme_short(full: str) -> ThemeName:
     if full.startswith(_THEME_PREFIX):
         candidate = full[len(_THEME_PREFIX) :]
         if candidate in _THEME_ORDER:
-            return candidate  # type: ignore[return-value]
+            return candidate
     return "dark"
