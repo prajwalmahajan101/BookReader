@@ -38,6 +38,8 @@ from bookreader.library.models import StoredPosition
 from bookreader.state.bookmarks_json import JsonBookmarkStore
 from bookreader.state.positions import Position
 from bookreader.ui.screens.bookmarks import BookmarkRow, BookmarksScreen
+from bookreader.ui.screens.collections import CollectionGroup, CollectionsScreen
+from bookreader.ui.screens.wishlist import WishlistScreen
 from bookreader.ui.widgets.chapter_view import ChapterView
 from bookreader.ui.widgets.paged_view import PagedView
 from bookreader.ui.widgets.status_bar import StatusBar
@@ -105,6 +107,9 @@ class ReaderScreen(Screen[None]):
         Binding("2", "toggle_paged", "2-page"),
         Binding("m", "add_bookmark", "Bookmark"),
         Binding("apostrophe", "list_bookmarks", "Marks"),
+        Binding("c", "toggle_complete", "Mark done"),
+        Binding("C,shift+c", "open_collections", "Collections"),
+        Binding("W,shift+w", "open_wishlist", "Wishlist"),
         Binding("g", "scroll_home", "Top", show=False),
         Binding("G,shift+g", "scroll_end", "Bottom", show=False),
         Binding("T,shift+t", "cycle_theme", "Theme"),
@@ -382,11 +387,73 @@ class ReaderScreen(Screen[None]):
 
         self.app.push_screen(screen, _after)
 
+    def action_toggle_complete(self) -> None:
+        """Toggle completion stamp on the book being read."""
+        if self._library is None or self._library_book_id is None:
+            self.notify(
+                "Marking complete requires a library — relaunch without --no-library",
+                timeout=4,
+            )
+            return
+        current = self._library.find_book_by_identifier(self._book.identifier)
+        if current is None:
+            return
+        if current.completed_at is None:
+            self._library.mark_complete(self._library_book_id)
+            self.notify(f"Marked “{current.title}” finished", timeout=2)
+        else:
+            self._library.mark_incomplete(self._library_book_id)
+            self.notify(f"Reopened “{current.title}”", timeout=2)
+
+    def action_open_collections(self) -> None:
+        """Push the Collections overview modal on top of the reader."""
+        if self._library is None:
+            self.notify(
+                "Collections require a library — relaunch without --no-library",
+                timeout=4,
+            )
+            return
+        self._save_position()
+        service = self._library
+        groups = [
+            CollectionGroup(c.name, tuple(service.list_books_in(c.id)))
+            for c in service.list_collections()
+        ]
+
+        def _after(book: object) -> None:
+            # Picking a different book from here is intentionally out of scope
+            # — reader is single-book; user can quit (q) and re-open from the
+            # library. Phase 5.3 may add cross-book swap if demand surfaces.
+            if book is not None:
+                self.notify(
+                    "Quit (q) and open from the library to switch books",
+                    timeout=4,
+                )
+
+        self.app.push_screen(CollectionsScreen(groups), _after)
+
+    def action_open_wishlist(self) -> None:
+        """Push the Wishlist overview modal on top of the reader."""
+        if self._library is None:
+            self.notify(
+                "Wishlist requires a library — relaunch without --no-library",
+                timeout=4,
+            )
+            return
+        service = self._library
+        screen = WishlistScreen(service.list_phantoms())
+
+        def _after(_picked: object) -> None:
+            for deleted_id in screen.deleted_ids:
+                service.remove_book(deleted_id)
+
+        self.app.push_screen(screen, _after)
+
     def action_show_help(self) -> None:
         """Show a help notification listing the most useful keys."""
         self.notify(
             "j/k scroll · space/b page · n/p chapter · t TOC · m mark · "
-            "' marks · 2 spread · q quit",
+            "' marks · c done · C colls · W wish · 2 spread · q quit",
             title="Keys",
             timeout=6,
         )
