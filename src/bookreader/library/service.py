@@ -43,6 +43,7 @@ def _wrap_sqlite(entity: str) -> Iterator[None]:
     except sqlite3.Error as exc:
         raise RepositoryError(entity, str(exc)) from exc
 
+
 log = get_logger(__name__)
 
 DEFAULT_COLLECTIONS: tuple[str, ...] = (

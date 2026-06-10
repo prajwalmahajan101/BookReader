@@ -83,9 +83,7 @@ def test_remove_book_cascades(service: LibraryService, sample_epub: Path) -> Non
     assert service.get_position(book.id) is None
 
 
-def test_save_position_wraps_sqlite_errors(
-    service: LibraryService, sample_epub: Path
-) -> None:
+def test_save_position_wraps_sqlite_errors(service: LibraryService, sample_epub: Path) -> None:
     """A closed connection must surface as :class:`RepositoryError`,
     not a raw :class:`sqlite3.Error`. This is the contract the UI
     relies on to route through the central BookReaderError handler.
