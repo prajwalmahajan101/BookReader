@@ -28,9 +28,11 @@ from typing import TYPE_CHECKING, ClassVar, Literal
 
 from textual.binding import Binding, BindingType
 from textual.containers import Container, Horizontal, VerticalScroll
+from textual.css.query import NoMatches
 from textual.screen import ModalScreen, Screen
 from textual.widgets import Button, Footer, Header, Input, Static
 
+from bookreader.core.exceptions import BookReaderError, PositionStoreError
 from bookreader.core.logging import get_logger
 from bookreader.library.models import StoredPosition
 from bookreader.state.bookmarks_json import JsonBookmarkStore
@@ -186,7 +188,7 @@ class ReaderScreen(Screen[None]):
                 session = self._library.start_session(self._library_book_id)
                 self._session_id = session.id
                 self._session_start_chapter = self._chapter_index
-            except Exception as exc:
+            except BookReaderError as exc:
                 log.warning("session start failed: %s", exc)
 
     # ----- mode helpers ----------------------------------------------------
@@ -470,7 +472,7 @@ class ReaderScreen(Screen[None]):
             else:
                 page_index = None
                 scroll_offset = int(self.query_one("#reader", VerticalScroll).scroll_y)
-        except Exception:  # screen torn down; nothing to save
+        except NoMatches:  # screen torn down; nothing to save
             return
         try:
             self._positions.save(
@@ -479,7 +481,7 @@ class ReaderScreen(Screen[None]):
                 scroll_offset=scroll_offset,
                 page_index=page_index,
             )
-        except Exception as exc:  # never crash the app on a save failure
+        except PositionStoreError as exc:  # never crash the app on a save failure
             log.warning("position save (json) failed: %s", exc)
         if self._library is not None and self._library_book_id is not None:
             try:
@@ -489,7 +491,7 @@ class ReaderScreen(Screen[None]):
                     scroll_offset=scroll_offset,
                     page_index=page_index,
                 )
-            except Exception as exc:
+            except BookReaderError as exc:
                 log.warning("position save (library) failed: %s", exc)
 
     def _load_saved_position(self) -> StoredPosition | Position | None:
@@ -508,7 +510,7 @@ class ReaderScreen(Screen[None]):
             if self._mode == "paged":
                 return self.query_one("#paged", PagedView).page_index
             return int(self.query_one("#reader", VerticalScroll).scroll_y)
-        except Exception:
+        except NoMatches:
             return 0
 
     def _save_bookmark(
@@ -521,14 +523,14 @@ class ReaderScreen(Screen[None]):
         """Persist a bookmark to the library DB or JSON fallback."""
         if self._library is not None and self._library_book_id is not None:
             try:
-                self._library.bookmarks.add(
+                self._library.add_bookmark(
                     self._library_book_id,
                     chapter_index=chapter_index,
                     scroll_offset=scroll_offset,
                     note=note,
                 )
                 return
-            except Exception as exc:
+            except BookReaderError as exc:
                 log.warning("bookmark save (library) failed: %s", exc)
         try:
             self._bookmarks_json.add(
@@ -537,20 +539,20 @@ class ReaderScreen(Screen[None]):
                 scroll_offset=scroll_offset,
                 note=note,
             )
-        except Exception as exc:
+        except (BookReaderError, OSError) as exc:
             log.warning("bookmark save (json) failed: %s", exc)
 
     def _delete_bookmark(self, bookmark_id: int) -> None:
         """Delete a bookmark from whichever store owns it."""
         if self._library is not None and self._library_book_id is not None:
             try:
-                self._library.bookmarks.delete(bookmark_id)
+                self._library.delete_bookmark(bookmark_id)
                 return
-            except Exception as exc:
+            except BookReaderError as exc:
                 log.warning("bookmark delete (library) failed: %s", exc)
         try:
             self._bookmarks_json.delete(self._book.identifier, bookmark_id)
-        except Exception as exc:
+        except (BookReaderError, OSError) as exc:
             log.warning("bookmark delete (json) failed: %s", exc)
 
     def _end_session(self) -> None:
@@ -560,7 +562,7 @@ class ReaderScreen(Screen[None]):
         pages = max(0, self._chapter_index - self._session_start_chapter)
         try:
             self._library.end_session(self._session_id, pages_advanced=pages)
-        except Exception as exc:
+        except BookReaderError as exc:
             log.warning("session end failed: %s", exc)
         self._session_id = None
 

@@ -305,13 +305,9 @@ class LibraryScreen(Screen[None]):
         def _after(path: str | None) -> None:
             if not path:
                 return
-            try:
-                from pathlib import Path
+            from pathlib import Path
 
-                self._service.attach_epub(book.id, Path(path).expanduser())
-            except Exception as exc:  # central handler shows the error
-                self.notify(str(exc), title="Attach failed", severity="error", timeout=6)
-                return
+            self._service.attach_epub(book.id, Path(path).expanduser())
             self.notify(f"Attached: {book.title}", timeout=3)
             self._reload()
 
@@ -323,13 +319,9 @@ class LibraryScreen(Screen[None]):
         def _after(path: str | None) -> None:
             if not path:
                 return
-            try:
-                from pathlib import Path
+            from pathlib import Path
 
-                self._service.add_book(Path(path).expanduser())
-            except Exception as exc:  # central handler shows the error
-                self.notify(str(exc), title="Add failed", severity="error", timeout=6)
-                return
+            self._service.add_book(Path(path).expanduser())
             self._reload()
 
         self.app.push_screen(_AddBookPrompt(), _after)
@@ -342,11 +334,7 @@ class LibraryScreen(Screen[None]):
                 return
             title, author = values
             authors = (author,) if author else ()
-            try:
-                self._service.add_wishlist(title=title, authors=authors)
-            except Exception as exc:
-                self.notify(str(exc), title="Wishlist failed", severity="error", timeout=6)
-                return
+            self._service.add_wishlist(title=title, authors=authors)
             self.notify(f"Added: {title}", timeout=3)
             self._reload()
 
@@ -379,15 +367,7 @@ class LibraryScreen(Screen[None]):
 
         def _after(_picked: Book | None) -> None:
             for deleted_id in screen.deleted_ids:
-                try:
-                    self._service.remove_book(deleted_id)
-                except Exception as exc:  # central handler shows the error
-                    self.notify(
-                        str(exc),
-                        title="Remove failed",
-                        severity="error",
-                        timeout=6,
-                    )
+                self._service.remove_book(deleted_id)
             self._reload()
 
         self.app.push_screen(screen, _after)
