@@ -57,17 +57,21 @@ def _build_themes() -> list[Theme]:
     """
     return [
         Theme(
+            # Bumped from the previous muted Catppuccin Mocha palette
+            # because the accents were too desaturated to read against
+            # the dark background. Tokyo-Night-adjacent values give
+            # punchier focus borders, key hints, and selection.
             name=f"{_THEME_PREFIX}dark",
-            primary="#89b4fa",
-            accent="#94e2d5",
-            foreground="#cdd6f4",
-            background="#1e1e2e",
-            surface="#1e1e2e",
-            panel="#181825",
-            boost="#313244",
-            warning="#f9e2af",
-            error="#f38ba8",
-            success="#a6e3a1",
+            primary="#7aa2f7",
+            accent="#7dcfff",
+            foreground="#e4e6ef",
+            background="#16161e",
+            surface="#1a1b26",
+            panel="#1a1b26",
+            boost="#414868",
+            warning="#e0af68",
+            error="#f7768e",
+            success="#9ece6a",
             dark=True,
         ),
         Theme(
