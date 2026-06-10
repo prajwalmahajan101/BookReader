@@ -16,7 +16,7 @@ from textual.containers import Vertical
 from textual.widget import Widget
 from textual.widgets import Static
 
-from bookreader.core.config import load_settings
+from bookreader.core.config import _terminal_supports_graphics, load_settings
 from bookreader.core.logging import get_logger
 from bookreader.epub.renderer import (
     ImageBlock,
@@ -51,6 +51,9 @@ class ChapterView(Vertical):
         self._settings = load_settings()
         self._book: Book | None = None
         self._last_chapter: Chapter | None = None
+        # One-shot per session: once we've nudged the user about
+        # disabled images on a capable terminal, stay quiet.
+        self._image_hint_shown: bool = False
 
     def attach_book(self, book: Book) -> None:
         """Tell the view which book it belongs to (for image resolution)."""
@@ -88,13 +91,29 @@ class ChapterView(Vertical):
             return
 
         widgets: list[Widget] = []
+        image_block_count = 0
         for block in blocks:
             if isinstance(block, TextBlock):
                 widgets.append(Static(block.text))
             elif isinstance(block, ImageBlock):
+                image_block_count += 1
                 widgets.append(self._build_image_widget(block))
         if widgets:
             self.mount_all(widgets)
+
+        # Discoverability: if the chapter had images, the terminal can draw
+        # them, and the user has them disabled, fire one quiet nudge.
+        if (
+            image_block_count
+            and not self._settings.images_enabled
+            and _terminal_supports_graphics()
+            and not self._image_hint_shown
+        ):
+            self._image_hint_shown = True
+            self.notify(
+                "Inline images available — press I to enable",
+                timeout=4,
+            )
 
     def _build_image_widget(self, block: ImageBlock) -> Widget:
         """Return an image widget when supported, else a placeholder."""
