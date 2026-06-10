@@ -63,7 +63,7 @@ class PagedView(Vertical):
         width: 100%;
         height: 1fr;
     }
-    PagedView #spread {
+    PagedView .paged-spread {
         width: 100%;
         height: 1fr;
         layout: horizontal;
@@ -188,13 +188,21 @@ class PagedView(Vertical):
     # ----- spread rendering -----------------------------------------------
 
     def _render_spread(self) -> None:
-        """Tear down children and re-mount the current pair of pages."""
+        """Tear down children and re-mount the current pair of pages.
+
+        Note on the no-id design: ``remove_children`` is asynchronous —
+        the old widget tree is still in the parent's node list when this
+        function returns, so reusing static IDs (``id="spread"`` etc.)
+        triggered ``DuplicateIds`` on resize-driven re-renders. Class
+        selectors + local references avoid the collision entirely; we
+        only need IDs when CSS or external queries need them.
+        """
         self.remove_children()
-        spread = Horizontal(id="spread")
+        spread = Horizontal(classes="paged-spread")
         self.mount(spread)
-        left = Vertical(classes="paged-column", id="left-page")
+        left = Vertical(classes="paged-column")
         gutter = Static("", classes="paged-gutter")
-        right = Vertical(classes="paged-column", id="right-page")
+        right = Vertical(classes="paged-column")
         spread.mount(left, gutter, right)
         for widget in self._page_widgets(self._page_index):
             left.mount(widget)
