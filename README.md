@@ -7,7 +7,7 @@
 
 > A terminal EPUB reader and personal library, built with [Textual](https://textual.textualize.io/) — for people who'd rather read in their terminal than launch a desktop app.
 
-![BookReader theme picker](docs/screenshots/theme-picker.png)
+![BookReader theme picker](https://raw.githubusercontent.com/prajwalmahajan101/BookReader/main/docs/screenshots/theme-picker.png)
 
 BookReader opens any EPUB in a focused two-column or two-page TUI, remembers where you left off, indexes everything you've added into a small SQLite library, and tracks per-book reading time and bookmarks. Inline `kitty` / `iTerm2` / `sixel` image rendering is auto-enabled when your terminal advertises a graphics protocol; otherwise figures fall back to `[image: alt]` placeholders.
 
