@@ -108,11 +108,35 @@ StatusBar {
     border-right: solid $accent;
 }
 
+/* Main pane (table + empty-state overlay) lives in a vertical container
+ * so the empty Static can take the table's space when no rows fit the
+ * current filter. */
+#library-main {
+    width: 1fr;
+    height: 1fr;
+    layout: vertical;
+}
+
 #library-table {
     width: 1fr;
+    height: 1fr;
     padding: 0 1;
     background: $background;
     color: $foreground;
+}
+
+#library-empty {
+    width: 1fr;
+    height: 1fr;
+    padding: 6 8;
+    background: $background;
+    color: $foreground-muted;
+    content-align: center middle;
+    text-align: center;
+}
+
+#library-table.-hidden, #library-empty.-hidden {
+    display: none;
 }
 
 #library-status {

@@ -24,7 +24,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, ClassVar
 
 from textual.binding import Binding, BindingType
-from textual.containers import Horizontal
+from textual.containers import Horizontal, Vertical
 from textual.screen import ModalScreen, Screen
 from textual.widgets import (
     Button,
@@ -179,7 +179,9 @@ class LibraryScreen(Screen[None]):
         yield Header(show_clock=False, icon="📚")
         with Horizontal(id="library-content"):
             yield CollectionList(id="library-sidebar")
-            yield DataTable(id="library-table", cursor_type="row", zebra_stripes=True)
+            with Vertical(id="library-main"):
+                yield DataTable(id="library-table", cursor_type="row", zebra_stripes=True)
+                yield Static("", id="library-empty", classes="-hidden")
         yield Static("", id="library-status")
         yield Footer()
 
@@ -187,7 +189,13 @@ class LibraryScreen(Screen[None]):
         """Configure table columns and load the first slice."""
         self.title = "Library"
         table = self.query_one("#library-table", DataTable)
-        table.add_columns("·", "Title", "Author", "Rating", "Time")
+        # Explicit widths keep the table readable on wide terminals — the
+        # title column flexes, everything else is narrow and right-sized.
+        table.add_column("·", width=2)
+        table.add_column("Title")
+        table.add_column("Author", width=26)
+        table.add_column("Rating", width=8)
+        table.add_column("Time", width=10)
         self._reload()
 
     # ----- reload ----------------------------------------------------------
@@ -225,7 +233,15 @@ class LibraryScreen(Screen[None]):
 
         reading_ids = self._reading_set()
         table = self.query_one("#library-table", DataTable)
+        empty = self.query_one("#library-empty", Static)
         table.clear()
+        if not books:
+            empty.update(self._empty_message())
+            empty.remove_class("-hidden")
+            table.add_class("-hidden")
+            return
+        empty.add_class("-hidden")
+        table.remove_class("-hidden")
         for book in books:
             minutes = self._service.minutes_read(book.id)
             table.add_row(
@@ -237,16 +253,42 @@ class LibraryScreen(Screen[None]):
                 key=str(book.id),
             )
 
+    def _empty_message(self) -> str:
+        """Return a context-appropriate empty-state hint."""
+        label = self._current_filter.label
+        if self._current_filter.kind == "all":
+            return "Library is empty.\n\nPress 'a' to add an EPUB, or 'A' to add a wishlist entry."
+        if self._current_filter.kind == "recents":
+            return "No recent books yet.\n\nOpen one from All books to populate this."
+        if label == "Want to Read":
+            return (
+                "Wishlist is empty.\n\n"
+                "Press 'A' on the library to add a TBR entry by title + author."
+            )
+        return f"No books in “{label}” yet."
+
     def _refresh_status(self) -> None:
-        """Update the bottom status line."""
+        """Update the header sub-title (counts) and the bottom status line.
+
+        Two separate slots intentionally: the header carries the global
+        library shape (total · finished · wishlist) so it never lies when
+        a filter narrows the table, and the status strip carries the
+        *current* filter state (showing X of Y).
+        """
         all_books = self._service.list_books()
         total = len(all_books)
         finished = sum(1 for b in all_books if b.completed_at)
         wishlist = sum(1 for b in all_books if b.is_phantom)
+
         wish_part = f" · {wishlist} wishlist" if wishlist else ""
-        self.query_one("#library-status", Static).update(
-            f"{total} books · {finished} finished{wish_part} · filter: {self._current_filter.label}"
-        )
+        self.sub_title = f"{total} books · {finished} finished{wish_part}"
+
+        shown = len(self._books)
+        if self._current_filter.kind == "all" and shown == total:
+            line = f"all {total} books"
+        else:
+            line = f"showing {shown} of {total} · filter: {self._current_filter.label}"
+        self.query_one("#library-status", Static).update(line)
 
     def _reading_set(self) -> set[int]:
         """Return ids of books in the seeded ``Currently Reading`` collection."""
