@@ -141,9 +141,19 @@ class BookReaderApp(App[None]):
 
     def on_mount(self) -> None:
         """Register themes, pick the initial one, push the entry screen."""
+        # Snapshot Textual's built-in themes BEFORE registering ours so
+        # we can unregister them and keep the Ctrl+P picker scoped to
+        # bookreader-dark / -light / -sepia only. Without this, the
+        # picker lists 20+ third-party themes (dracula, gruvbox, etc.)
+        # that we don't theme our own widgets against.
+        builtin_theme_names = list(self.available_themes.keys())
+
         for theme in _build_themes():
             self.register_theme(theme)
         self.theme = _theme_id(self._settings.theme)
+
+        for name in builtin_theme_names:
+            self.unregister_theme(name)
 
         if self._book is not None:
             self.push_screen(self._make_reader(self._book, library_book_id=self._library_book_id))
