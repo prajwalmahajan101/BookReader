@@ -45,12 +45,18 @@ class ChapterView(Vertical):
     }
     /* textual-image widgets default to ``height: 1fr`` which makes them
      * expand to consume all remaining vertical space — that pushes the
-     * text below the image off the visible page. Pin height to ``auto``
-     * so the widget sizes to its image's natural aspect ratio at the
-     * available column width, and let scroll handle the rest. */
+     * text below the image off the visible page. We want:
+     *   • width: auto + max-width: 100%  — render at the image's natural
+     *     cell width so small EPUB figures (logos, glyphs) stay small,
+     *     but cap at the column so a huge cover doesn't overflow.
+     *   • height: auto                   — preserve aspect ratio.
+     * This keeps each image at its in-EPUB size whenever it fits, and
+     * scales it down (never up) when the column is narrower than the
+     * image's natural width. */
     ChapterView Image, ChapterView AutoImage {
-        width: 100%;
+        width: auto;
         height: auto;
+        max-width: 100%;
         margin: 1 0;
     }
     """
