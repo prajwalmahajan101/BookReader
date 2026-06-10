@@ -14,7 +14,7 @@ Built solo as a phase-driven exercise: each phase is a feature branch with its o
 - **Strict typing + linting** — mypy strict, ruff (format + lint), pre-commit enforced. PEP 257 + Google docstrings; module-level logger via `bookreader.core.logging.get_logger(__name__)`.
 - **Dependencies** — `pip-tools` with layered `requirements/*.in → *.txt` (runtime / dev / test split).
 - **Async-first** — `pytest-asyncio` with `asyncio_mode = auto`.
-- **Commit discipline** — conventional commits, atomic, on `feature/phaseN_<topic>` branches; `main` is always releasable. 40 commits across 11 feature branches all merged clean as of v0.3.
+- **Commit discipline** — conventional commits, atomic, on `feature/phaseN_<topic>` branches; `main` is always releasable. History stays linear: each phase is its own feature branch, fast-forward-merged into main with atomic conventional commits.
 
 ## Install (development)
 
@@ -24,6 +24,10 @@ source .venv/bin/activate
 pip install -e ".[dev]"
 pre-commit install
 ```
+
+> If you pulled new commits that added runtime dependencies (e.g.
+> `textual-image`), re-run `pip install -e ".[dev]"` inside the
+> activated venv so the editable install refreshes its metadata.
 
 ## Run
 
