@@ -58,3 +58,23 @@ class PositionStoreError(BookReaderError):
         self.path = path
         self.reason = reason
         super().__init__(f"position store error at {path}: {reason}")
+
+
+class RepositoryError(BookReaderError):
+    """Raised when a library SQLite operation fails.
+
+    Wraps :class:`sqlite3.Error` at the service boundary so UI code can
+    catch :class:`BookReaderError` and route through the central handler
+    without leaking the underlying driver exception.
+
+    Attributes:
+        entity: Short label for what was being acted on (e.g. ``"book"``,
+            ``"bookmark"``, ``"position"``).
+        reason: Short human-readable reason.
+    """
+
+    def __init__(self, entity: str, reason: str) -> None:
+        """Initialize with entity label and reason."""
+        self.entity = entity
+        self.reason = reason
+        super().__init__(f"library {entity} error: {reason}")
