@@ -63,6 +63,12 @@ class Settings(BaseSettings):
     show_toc_default: bool = True
     images_enabled: bool = Field(default_factory=_terminal_supports_graphics)
     two_page_default: bool = False
+    # Reading column max width in terminal cells. 84 was the old typography
+    # cap (~70-character reading measure); bumped to 110 because images
+    # and modern wide-screen terminals make the tight measure feel cramped.
+    # Override with BOOKREADER_READING_WIDTH=N. Capped at 200 to keep
+    # typography sane.
+    reading_width: int = Field(default=110, ge=60, le=200)
 
 
 def load_settings() -> Settings:

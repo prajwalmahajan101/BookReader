@@ -170,6 +170,15 @@ class ReaderScreen(Screen[None]):
         if self._book.authors:
             self.sub_title = " · ".join(self._book.authors)
 
+        # Apply configurable reading column width. The CSS file ships a
+        # sensible 110-cell fallback; this lets ``BOOKREADER_READING_WIDTH``
+        # override it without touching styles.tcss.
+        from bookreader.core.config import load_settings
+
+        settings = load_settings()
+        column = self.query_one("#reading-column")
+        column.styles.max_width = settings.reading_width
+
         # Give the chapter view the book context so it can resolve images.
         self.query_one("#chapter", ChapterView).attach_book(self._book)
 

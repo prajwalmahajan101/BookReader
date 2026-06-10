@@ -50,20 +50,22 @@ Screen {
 }
 
 /* Centered, width-capped reading column. 100% on narrow terminals,
- * capped at 84 cells on wide ones. */
+ * capped at Settings.reading_width on wide ones (default 110). Reader
+ * screen overrides this from settings at on_mount; the CSS value is a
+ * sensible fallback if the override doesn't fire. */
 #reading-column {
     width: 100%;
-    max-width: 84;
+    max-width: 110;
     height: auto;
     margin: 1 0 2 0;
     padding: 0 2;
 }
 
 /* In two-page mode the column carries two pages + a gutter, so the
- * single-column cap (84) is too tight. 140 cells → ~68 per page +
+ * single-column cap is too tight. 160 cells → ~78 per page +
  * gutter, well inside an optimum reading measure for each side. */
 #reading-column.-paged {
-    max-width: 140;
+    max-width: 160;
 }
 
 ChapterView {
