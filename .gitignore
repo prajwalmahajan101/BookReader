@@ -16,3 +16,6 @@ htmlcov/
 .DS_Store
 *.epub
 !tests/fixtures/*.epub
+
+# mkdocs build output
+/site/
