@@ -1,11 +1,28 @@
 [project]
-name = "bookreader"
+name = "bookreader-tui"
 version = "0.4.0"
 description = "A terminal EPUB reader and personal library built with Textual."
-readme = "README.md"
+readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.11"
-license = { text = "MIT" }
-authors = [{ name = "Prajwal" }]
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [{ name = "Prajwal Mahajan" }]
+keywords = ["epub", "ebook", "reader", "tui", "terminal", "textual", "library", "kitty", "sixel"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console :: Curses",
+    "Intended Audience :: End Users/Desktop",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Terminals",
+    "Topic :: Text Editors :: Text Processing",
+    "Topic :: Text Processing :: Markup",
+    "Typing :: Typed",
+]
 dependencies = [
     "textual>=0.85",
     "ebooklib>=0.18",
@@ -26,13 +43,21 @@ dev = [
     "pytest-asyncio>=0.23",
     "pre-commit>=3.7",
     "types-beautifulsoup4",
+    "build>=1.2",
+    "twine>=5.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/prajwalmahajan101/BookReader"
+Repository = "https://github.com/prajwalmahajan101/BookReader"
+Issues = "https://github.com/prajwalmahajan101/BookReader/issues"
+Changelog = "https://github.com/prajwalmahajan101/BookReader/blob/main/CHANGELOG.md"
 
 [project.scripts]
 bookreader = "bookreader.cli:entrypoint"
 
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
