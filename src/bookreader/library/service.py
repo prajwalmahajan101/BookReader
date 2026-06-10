@@ -7,9 +7,13 @@ file so the repositories remain mechanical CRUD.
 
 from __future__ import annotations
 
+import contextlib
+import sqlite3
+from collections.abc import Iterator
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from bookreader.core.exceptions import RepositoryError
 from bookreader.core.logging import get_logger
 from bookreader.epub.reader import open_book
 from bookreader.library.database import Database
@@ -24,6 +28,20 @@ from bookreader.library.repository import (
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
+
+
+@contextlib.contextmanager
+def _wrap_sqlite(entity: str) -> Iterator[None]:
+    """Convert any ``sqlite3.Error`` into a :class:`RepositoryError`.
+
+    Applied at the service boundary so the UI can route through the
+    central :class:`BookReaderError` handler without leaking the driver
+    exception.
+    """
+    try:
+        yield
+    except sqlite3.Error as exc:
+        raise RepositoryError(entity, str(exc)) from exc
 
 log = get_logger(__name__)
 
@@ -106,12 +124,13 @@ class LibraryService:
         and metadata in place (handles re-imports from a moved file).
         """
         parsed = open_book(path)
-        book = self._books.upsert(
-            identifier=parsed.identifier,
-            file_path=path,
-            title=parsed.title,
-            authors=parsed.authors,
-        )
+        with _wrap_sqlite("book"):
+            book = self._books.upsert(
+                identifier=parsed.identifier,
+                file_path=path,
+                title=parsed.title,
+                authors=parsed.authors,
+            )
         log.info("library add: %s [%s]", parsed.title, parsed.identifier)
         return book
 
@@ -136,11 +155,12 @@ class LibraryService:
         """
         if not title.strip():
             raise ValueError("title must not be empty")
-        book = self._books.create_phantom(title=title.strip(), authors=list(authors))
-        if collection_name:
-            col = self._collections.find_by_name(collection_name)
-            if col is not None:
-                self._collections.add_book(col.id, book.id)
+        with _wrap_sqlite("wishlist"):
+            book = self._books.create_phantom(title=title.strip(), authors=list(authors))
+            if collection_name:
+                col = self._collections.find_by_name(collection_name)
+                if col is not None:
+                    self._collections.add_book(col.id, book.id)
         log.info("library wishlist add: %s", title)
         return book
 
@@ -155,13 +175,14 @@ class LibraryService:
             RepositoryError: If *book_id* is missing or already attached.
         """
         parsed = open_book(path)
-        book = self._books.attach_epub(
-            book_id,
-            identifier=parsed.identifier,
-            file_path=path,
-            title=parsed.title,
-            authors=parsed.authors,
-        )
+        with _wrap_sqlite("book"):
+            book = self._books.attach_epub(
+                book_id,
+                identifier=parsed.identifier,
+                file_path=path,
+                title=parsed.title,
+                authors=parsed.authors,
+            )
         log.info("library attach: book=%s file=%s", book_id, path)
         return book
 
@@ -171,7 +192,8 @@ class LibraryService:
 
     def remove_book(self, book_id: int) -> None:
         """Delete a book and all its dependent rows."""
-        self._books.delete(book_id)
+        with _wrap_sqlite("book"):
+            self._books.delete(book_id)
 
     def list_books(self) -> list[Book]:
         """Return all books, most-recently-touched first."""
@@ -261,11 +283,34 @@ class LibraryService:
         page_index: int | None = None,
     ) -> StoredPosition:
         """Persist a reading position."""
-        return self._positions.save(book_id, chapter_index, scroll_offset, page_index)
+        with _wrap_sqlite("position"):
+            return self._positions.save(book_id, chapter_index, scroll_offset, page_index)
 
     def get_position(self, book_id: int) -> StoredPosition | None:
         """Return the saved position for *book_id*."""
         return self._positions.get(book_id)
+
+    def add_bookmark(
+        self,
+        book_id: int,
+        *,
+        chapter_index: int,
+        scroll_offset: int,
+        note: str = "",
+    ) -> None:
+        """Persist a bookmark (wrapped so UI sees :class:`RepositoryError`)."""
+        with _wrap_sqlite("bookmark"):
+            self._bookmarks.add(
+                book_id,
+                chapter_index=chapter_index,
+                scroll_offset=scroll_offset,
+                note=note,
+            )
+
+    def delete_bookmark(self, bookmark_id: int) -> None:
+        """Delete a bookmark by id (wrapped for the UI boundary)."""
+        with _wrap_sqlite("bookmark"):
+            self._bookmarks.delete(bookmark_id)
 
     # ----- internals -------------------------------------------------------
 
