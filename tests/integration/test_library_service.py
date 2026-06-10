@@ -81,3 +81,19 @@ def test_remove_book_cascades(service: LibraryService, sample_epub: Path) -> Non
     assert service.find_book_by_identifier(book.identifier) is None
     assert service.list_books_in(a.id) == []
     assert service.get_position(book.id) is None
+
+
+def test_save_position_wraps_sqlite_errors(
+    service: LibraryService, sample_epub: Path
+) -> None:
+    """A closed connection must surface as :class:`RepositoryError`,
+    not a raw :class:`sqlite3.Error`. This is the contract the UI
+    relies on to route through the central BookReaderError handler.
+    """
+    from bookreader.core.exceptions import RepositoryError
+
+    book = service.add_book(sample_epub)
+    service.close()  # next save will hit a closed connection
+    with pytest.raises(RepositoryError) as exc_info:
+        service.save_position(book.id, chapter_index=0, scroll_offset=0)
+    assert exc_info.value.entity == "position"
