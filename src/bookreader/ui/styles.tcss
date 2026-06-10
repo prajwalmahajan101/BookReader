@@ -101,11 +101,11 @@ StatusBar {
     padding: 1 1;
     background: $panel;
     color: $foreground;
-    border-right: solid $boost;
+    border: solid $boost;
 }
 
 #library-sidebar:focus-within {
-    border-right: solid $accent;
+    border: solid $accent;
 }
 
 /* Main pane (table + empty-state overlay) lives in a vertical container
@@ -123,6 +123,11 @@ StatusBar {
     padding: 0 1;
     background: $background;
     color: $foreground;
+    border: solid transparent;
+}
+
+#library-table:focus-within {
+    border: solid $accent;
 }
 
 #library-empty {
