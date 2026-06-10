@@ -5,6 +5,38 @@ All notable changes to BookReader are documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.0] — 2026-06-10
+
+Stable 1.0. Same code surface as 0.4.0 — this release ships the polish
+pass that grew up around the project after the first PyPI upload.
+
+### Added
+- **README rewrite** geared at first-time users — `pipx` / `uv tool` /
+  `pip-in-venv` install paths with a PEP 668 note, terminal × graphics-
+  protocol compatibility matrix, Quick Start, Troubleshooting, and a
+  `Why bookreader-tui?` comparison vs Calibre / `epy` / `mdcat`.
+- **mkdocs-material documentation site** at
+  https://prajwalmahajan101.github.io/BookReader/ — auto-deployed on
+  every push to `main` that touches `docs/site/`, `mkdocs.yml`, or the
+  README/CHANGELOG.
+- **Real screenshots** — library, scroll-mode reader, and two-page
+  reader captured via a Textual SVG pilot
+  (`scripts/capture_screenshots.py`); embedded in the README, PyPI
+  long-description, and the docs site.
+- **`SECURITY.md`** — vulnerability-reporting policy via GitHub Private
+  Vulnerability Reporting.
+- **`CONTRIBUTING.md`** — distilled commit / branching / architectural
+  conventions for outside contributors.
+- **`docs/demo.tape`** — vhs script for an animated README hero. Render
+  with `vhs docs/demo.tape` (requires `vhs`/`ffmpeg`/`ttyd`).
+- **GitHub repo metadata** — description, homepage URL, and topics
+  (`tui`, `textual`, `epub`, `kitty`, `sixel`, …) so the project shows
+  up in topical searches.
+
+### Changed
+- Project name remains `bookreader-tui` on PyPI; import path remains
+  `bookreader`. License remains Apache-2.0.
+
 ## [0.4.0] — 2026-06-10
 
 First PyPI release as `bookreader-tui`. Bundles every change from
@@ -139,6 +171,7 @@ Initial release. Phase 1 — Reader Core.
 - 12 unit tests; ruff clean; mypy strict.
 - ADR-0001 records the stack choice (Textual + ebooklib + SQLite).
 
+[1.0.0]: https://github.com/prajwalmahajan101/BookReader/releases/tag/v1.0.0
 [0.4.0]: https://github.com/prajwalmahajan101/BookReader/releases/tag/v0.4.0
 [0.3.0]: https://github.com/prajwalmahajan101/BookReader/releases/tag/v0.3.0
 [0.2.2]: https://github.com/prajwalmahajan101/BookReader/releases/tag/v0.2.2

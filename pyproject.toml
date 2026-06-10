@@ -1,6 +1,6 @@
 [project]
 name = "bookreader-tui"
-version = "0.4.0"
+version = "1.0.0"
 description = "A terminal EPUB reader and personal library built with Textual."
 readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.11"
