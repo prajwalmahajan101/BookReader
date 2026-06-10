@@ -188,13 +188,20 @@ class BookReaderApp(App[None]):
     # ----- theme handling --------------------------------------------------
 
     def action_cycle_theme(self) -> None:
-        """Cycle through the registered BookReader themes."""
-        current = _theme_short(self.theme)
-        try:
+        """Cycle through the registered BookReader themes.
+
+        If the active theme isn't one of ours (e.g. the user picked a
+        Textual built-in via the command palette), snap back to
+        ``bookreader-dark`` so the cycle is predictable. Otherwise step
+        to the next BookReader theme in the documented order.
+        """
+        active = self.theme or ""
+        if not active.startswith(_THEME_PREFIX):
+            nxt: ThemeName = "dark"
+        else:
+            current = _theme_short(active)
             idx = _THEME_ORDER.index(current)
-        except ValueError:
-            idx = -1
-        nxt = _THEME_ORDER[(idx + 1) % len(_THEME_ORDER)]
+            nxt = _THEME_ORDER[(idx + 1) % len(_THEME_ORDER)]
         self.theme = _theme_id(nxt)
         self.notify(f"theme: {nxt}", timeout=2)
 
