@@ -179,8 +179,9 @@ class ReaderScreen(Screen[None]):
         column = self.query_one("#reading-column")
         column.styles.max_width = settings.reading_width
 
-        # Give the chapter view the book context so it can resolve images.
+        # Give both views the book context so they can resolve images.
         self.query_one("#chapter", ChapterView).attach_book(self._book)
+        self.query_one("#paged", PagedView).attach_book(self._book)
 
         saved = self._load_saved_position()
         start_chapter = saved.chapter_index if saved else 0
@@ -349,37 +350,52 @@ class ReaderScreen(Screen[None]):
     def action_toggle_paged(self) -> None:
         """Toggle between scroll and two-page reading modes.
 
-        When the user enters paged mode on a chapter that contains
-        images, surface the trade-off — paged mode shows placeholders
-        because column pagination can't carry mounted image widgets.
+        Position persistence across the toggle: scroll-mode offset is
+        converted to a chapter-progress fraction, which becomes the
+        target spread in paged mode (rounded to the nearest left page).
+        Paged → scroll mirrors the conversion via ``progress()`` and
+        ``set_scroll(...)``.
         """
+        # Capture the current visual position BEFORE switching so we
+        # can map it onto the destination view.
+        progress = self._current_visual_progress()
+
         self._save_position()
         self._mode = "paged" if self._mode == "scroll" else "scroll"
         self._apply_mode_classes()
-        # Force the paged view to re-paginate against the new visible size.
-        if self._mode == "paged":
-            self.query_one("#paged", PagedView).refresh(layout=True)
-            if self._current_chapter_has_images():
-                self.notify(
-                    "Paged mode shows [image: alt] placeholders. "
-                    "Press 2 to return to scroll mode for inline images.",
-                    timeout=5,
-                )
-        self.call_after_refresh(self._refresh_status)
+        self._paint_current_chapter()
+        self.call_after_refresh(self._restore_visual_progress, progress)
         self.notify(f"mode: {self._mode}", timeout=2)
 
-    def _current_chapter_has_images(self) -> bool:
-        """True when the active chapter has any resolved image blocks.
+    def _current_visual_progress(self) -> float:
+        """Return a 0.0-1.0 fraction of how far into the chapter we are.
 
-        Cheap check — we already parse the chapter for the scroll view;
-        re-checking the raw HTML for an ``<img>`` tag is a faster proxy
-        than re-running ``render_chapter_blocks`` here.
+        Used to map between scroll-mode offsets and paged-mode page
+        indices when the user toggles ``2``.
         """
         try:
-            chapter = self._book.chapters[self._chapter_index]
-        except (IndexError, AttributeError):
-            return False
-        return "<img" in chapter.html.lower()
+            if self._mode == "paged":
+                return self.query_one("#paged", PagedView).progress()
+            scroller = self.query_one("#reader", VerticalScroll)
+            denom = max(1, int(scroller.max_scroll_y) or 1)
+            return min(1.0, scroller.scroll_y / denom)
+        except NoMatches:
+            return 0.0
+
+    def _restore_visual_progress(self, progress: float) -> None:
+        """Land on the part of the chapter matching the given progress."""
+        try:
+            if self._mode == "paged":
+                paged = self.query_one("#paged", PagedView)
+                total = max(1, paged.total_pages())
+                target = int(progress * (total - 1))
+                paged.set_page_index(target)
+            else:
+                scroller = self.query_one("#reader", VerticalScroll)
+                scroller.scroll_to(y=int(progress * scroller.max_scroll_y), animate=False)
+        except NoMatches:
+            return
+        self._refresh_status()
 
     def action_cycle_theme(self) -> None:
         """Cycle dark → light → sepia → dark."""
