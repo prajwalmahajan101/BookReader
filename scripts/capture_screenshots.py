@@ -81,6 +81,7 @@ async def _capture_reader(service: LibraryService, book_id: int) -> None:
 
 
 async def main() -> None:
+    """Entry point: seed a temp library, drive the app, write three SVGs."""
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory() as tmp:
         service = LibraryService(Database(Path(tmp) / "lib.db"))
