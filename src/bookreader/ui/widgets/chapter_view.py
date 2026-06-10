@@ -43,6 +43,16 @@ class ChapterView(Vertical):
         width: 100%;
         height: auto;
     }
+    /* textual-image widgets default to ``height: 1fr`` which makes them
+     * expand to consume all remaining vertical space — that pushes the
+     * text below the image off the visible page. Pin height to ``auto``
+     * so the widget sizes to its image's natural aspect ratio at the
+     * available column width, and let scroll handle the rest. */
+    ChapterView Image, ChapterView AutoImage {
+        width: 100%;
+        height: auto;
+        margin: 1 0;
+    }
     """
 
     def __init__(self, *, id: str | None = None) -> None:
