@@ -1,167 +1,275 @@
-# BookReader
+# bookreader-tui
 
 [![PyPI](https://img.shields.io/pypi/v/bookreader-tui.svg)](https://pypi.org/project/bookreader-tui/)
 [![Python](https://img.shields.io/pypi/pyversions/bookreader-tui.svg)](https://pypi.org/project/bookreader-tui/)
 [![License](https://img.shields.io/pypi/l/bookreader-tui.svg)](./LICENSE)
 [![test](https://github.com/prajwalmahajan101/BookReader/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/prajwalmahajan101/BookReader/actions/workflows/test.yml)
 
-> A terminal EPUB reader and personal library, built with [Textual](https://textual.textualize.io/) — for people who'd rather read in their terminal than launch a desktop app.
+> A terminal EPUB reader and personal library, built with [Textual](https://textual.textualize.io/).
 
 ![BookReader theme picker](https://raw.githubusercontent.com/prajwalmahajan101/BookReader/main/docs/screenshots/theme-picker.png)
 
-BookReader opens any EPUB in a focused two-column or two-page TUI, remembers where you left off, indexes everything you've added into a small SQLite library, and tracks per-book reading time and bookmarks. Inline `kitty` / `iTerm2` / `sixel` image rendering is auto-enabled when your terminal advertises a graphics protocol; otherwise figures fall back to `[image: alt]` placeholders.
+Open an EPUB in a focused two-column or two-page TUI, remember where you left off, organize what you've read into a small SQLite library, and render figures inline in `kitty`, `iTerm2`, `WezTerm`, or any sixel-capable terminal — automatically, with placeholders elsewhere.
 
-Built solo as a phase-driven exercise: each phase is a feature branch with its own ADR, atomic commits, and merge-clean history. Currently shipped: **Phase 1 (Reader Core)**, **Phase 1.5 (Two-page mode)**, **Phase 2 (SQLite Library)**, **Phase 3 (Polish — bookmarks, sessions, phantom / wishlist books, inline images)**, **Phase 4 (Library curation — collections + wishlist overview)**.
+## Features
 
-## How it's built
-
-- **Layered architecture** — `core` (config/paths/logging, no I/O) · `epub` (parse + render, no UI/DB) · `library` (persistence + service) · `ui` (Textual screens + widgets). The UI never imports a repository directly; it goes through a service. Decisions live in [`docs/adr/`](./docs/adr/).
-- **Strict typing + linting** — mypy strict, ruff (format + lint), pre-commit enforced. PEP 257 + Google docstrings; module-level logger via `bookreader.core.logging.get_logger(__name__)`.
-- **Dependencies** — `pip-tools` with layered `requirements/*.in → *.txt` (runtime / dev / test split).
-- **Async-first** — `pytest-asyncio` with `asyncio_mode = auto`.
-- **Commit discipline** — conventional commits, atomic, on `feature/phaseN_<topic>` branches; `main` is always releasable. History stays linear: each phase is its own feature branch, fast-forward-merged into main with atomic conventional commits.
+- **Distraction-free reader** — centered reading column with a typographically sane width cap, TOC sidebar, optional two-page spread.
+- **Persistent position** — picks up exactly where you left off, per book, identified by EPUB `dc:identifier`.
+- **Library** — SQLite-backed, with collections (*Currently Reading*, *Finished*, *Want to Read*), ratings, bookmarks with notes, per-book reading time.
+- **Wishlist books** — track titles you intend to read before you have the file. Attach a real EPUB later.
+- **Inline images** — kitty / iTerm2 / WezTerm / sixel via [textual-image](https://pypi.org/project/textual-image/); auto-detected, runtime-toggleable with `I`.
+- **Three built-in themes** (`dark`, `light`, `sepia`) plus the standard Textual command palette.
+- **Pure Python, no external services** — your library lives in `~/.local/share/bookreader/`. Nothing leaves your machine.
 
 ## Install
 
-From PyPI:
+The PyPI package is named **`bookreader-tui`**. The bare `bookreader` name was already taken on PyPI; the import path and the console script are still `bookreader`.
+
+### Recommended: pipx or uv tool
+
+For end-user CLI tools, prefer an isolated install over `pip install` into your system Python — that path is blocked on most modern Linux distros by [PEP 668](https://peps.python.org/pep-0668/) anyway.
 
 ```bash
-pip install bookreader-tui
-bookreader path/to/book.epub
+# pipx (most popular)
+pipx install bookreader-tui
+
+# OR uv tool (faster, same idea)
+uv tool install bookreader-tui
 ```
 
-The PyPI package name is `bookreader-tui` (the bare `bookreader` was
-taken); the import path and the console script are still `bookreader`.
+Either gives you a global `bookreader` command with its dependencies sandboxed in their own venv.
 
-### Development install
+### pip (inside a venv)
+
+If you're already managing a virtualenv:
 
 ```bash
 python -m venv .venv
-source .venv/bin/activate
-pip install -e ".[dev]"
-pre-commit install
+source .venv/bin/activate          # Linux/macOS
+# .venv\Scripts\activate           # Windows
+pip install bookreader-tui
 ```
 
-> If you pulled new commits that added runtime dependencies (e.g.
-> `textual-image`), re-run `pip install -e ".[dev]"` inside the
-> activated venv so the editable install refreshes its metadata.
-
-## Run
+### From source
 
 ```bash
-bookreader                            # library home
-bookreader open path/to/book.epub     # open a single book (adds it to the library)
-bookreader path/to/book.epub          # same as 'open'
-bookreader --no-library <path>        # stateless reader (no library writes)
-
-bookreader add path/to/book.epub      # add without opening
-bookreader add --wishlist --title "T" --author "A"   # wishlist (TBR) entry, no file
-bookreader attach <book-id> path.epub # promote a wishlist row to a real book
-bookreader list                       # print every book in the library
-bookreader stats                      # minutes read per book
+git clone https://github.com/prajwalmahajan101/BookReader
+cd BookReader
+pipx install -e .                  # or: pip install -e . inside a venv
 ```
 
-## Keys — reader
+### Requirements
 
-| Key           | Action                  |
-|---------------|-------------------------|
-| `j` / `k`     | Scroll line down / up   |
-| `space` / `b` | Page down / up          |
-| `n` / `p`     | Next / prev chapter     |
-| `t`           | Toggle TOC sidebar      |
-| `2`           | Toggle two-page mode    |
-| `m`           | Add a bookmark (with optional note) |
-| `'`           | List bookmarks — Enter jumps |
-| `c`           | Toggle completion of the current book |
-| `C` (shift+c) | Open Collections overview from inside the reader |
-| `W` (shift+w) | Open Wishlist overview from inside the reader |
-| `I` (shift+i) | Toggle inline image rendering at runtime |
-| `g` / `G`     | Top / bottom of chapter |
-| `T`           | Cycle theme (dark/light/sepia) |
-| `?`           | Show key hints          |
-| `q`           | Save and back (or quit) |
+- Python ≥ 3.11
+- A terminal with at least 80 columns. 120+ recommended.
+- For inline images: kitty, iTerm2, WezTerm, Ghostty, or a sixel-capable terminal (foot, mlterm, xterm with `--enable-sixel-graphics`, Konsole, Windows Terminal).
 
-Scrolling past the end of a chapter flows into the next one automatically;
-going back from the start flows into the previous chapter's end.
+## Quick start
 
-## Keys — library
+```bash
+# Open a book directly — gets added to your library on first open
+bookreader path/to/book.epub
 
-| Key                | Action                                |
-|--------------------|---------------------------------------|
-| Enter / `i`        | Open the highlighted book             |
-| `a`                | Add a book (prompts for path)         |
-| `A` (shift+a)      | Add a wishlist entry (title + author) |
-| `C` (shift+c)      | Browse all books grouped by collection (title + path) |
-| `W` (shift+w)      | Browse wishlist (title + author); `d` removes |
-| `d` / Delete       | Remove the highlighted book           |
-| `c`                | Toggle completion                     |
-| `1` … `5`          | Set rating; `0` clears                |
-| Tab                | Switch focus between sidebar & table  |
-| `T` / `?` / `q`    | Theme / help / quit                   |
+# Land on the library home; pick a book with Enter
+bookreader
 
-## Project layout
+# One-off read without touching the library
+bookreader --no-library path/to/book.epub
+```
+
+That's it. Position, bookmarks, and reading time persist automatically.
+
+## Inline images — terminal setup
+
+`bookreader` ships inline-image rendering via [`textual-image`](https://pypi.org/project/textual-image/). On launch it sniffs your terminal and enables images if it recognizes a graphics-capable one.
+
+### What works out of the box (no config)
+
+| Terminal       | Protocol used         | Notes                                                  |
+|----------------|-----------------------|--------------------------------------------------------|
+| **kitty**      | Kitty Graphics (TGP)  | Best fidelity. Auto-detected via `TERM=xterm-kitty` or `KITTY_WINDOW_ID`. |
+| **Ghostty**    | Kitty Graphics (TGP)  | Native support; behaves like kitty.                    |
+| **iTerm2**     | iTerm2 inline images  | macOS. Auto-detected via `TERM_PROGRAM=iTerm.app`.     |
+| **WezTerm**    | Kitty / iTerm / Sixel | Supports all three; auto-detected via `TERM_PROGRAM=WezTerm`. |
+| **Konsole**    | Kitty (partial)       | Recent versions only.                                  |
+| **VS Code terminal** | iTerm2 inline images | Works for static images.                         |
+
+### Sixel terminals (force-enable)
+
+`foot`, `mlterm`, `xterm` (built with `--enable-sixel-graphics`), `mintty`, `Contour`, `Windows Terminal`. Auto-detection doesn't cover these — set the override:
+
+```bash
+BOOKREADER_IMAGES_ENABLED=1 bookreader path/to/book.epub
+```
+
+### Terminals without graphics support
+
+Anything else (e.g. plain `xterm`, `gnome-terminal`, `Terminal.app`, tmux without a graphics-capable host) renders figures as `[image: alt]` placeholders. Everything else works normally.
+
+### Toggle at runtime
+
+Press **`I`** inside the reader to flip images on/off mid-session — useful for comparing or when an image is breaking your layout.
+
+## Key bindings
+
+### Reader
+
+| Key           | Action                                           |
+|---------------|--------------------------------------------------|
+| `j` / `k`     | Scroll line down / up                            |
+| `space` / `b` | Page down / up                                   |
+| `n` / `p`     | Next / previous chapter                          |
+| `g` / `G`     | Top / bottom of chapter                          |
+| `t`           | Toggle TOC sidebar                               |
+| `2`           | Toggle two-page mode                             |
+| `m`           | Add a bookmark (with optional note)              |
+| `'`           | List bookmarks — Enter jumps                     |
+| `c`           | Toggle completion of the current book            |
+| `C`           | Open Collections overview                        |
+| `W`           | Open Wishlist overview                           |
+| `I`           | Toggle inline image rendering                    |
+| `T`           | Cycle theme                                      |
+| `?`           | Show key hints                                   |
+| `q`           | Save and back (or quit)                          |
+
+Scrolling past the end of a chapter flows into the next one; going back from the start flows into the previous chapter's end.
+
+### Library
+
+| Key                | Action                                       |
+|--------------------|----------------------------------------------|
+| Enter / `i`        | Open the highlighted book                    |
+| `a`                | Add a book (prompts for path)                |
+| `A`                | Add a wishlist entry (title + author)        |
+| `C`                | Browse books grouped by collection           |
+| `W`                | Browse the wishlist                          |
+| `d` / Delete       | Remove the highlighted book                  |
+| `c`                | Toggle completion                            |
+| `1` … `5`          | Set rating; `0` clears                       |
+| Tab                | Switch focus between sidebar and table       |
+| `T` / `?` / `q`    | Theme / help / quit                          |
+
+## CLI subcommands
+
+```bash
+bookreader add path/to/book.epub                          # add without opening
+bookreader add --wishlist --title "T" --author "A"        # phantom entry, no file
+bookreader attach <book-id> path/to/book.epub             # promote a wishlist row
+bookreader list                                           # print every book
+bookreader stats                                          # minutes read per book
+bookreader --version
+```
+
+## Configuration
+
+All settings are environment variables prefixed `BOOKREADER_`. Set them in your shell rc, your `.env`, or per-invocation:
+
+| Variable                       | Default      | Effect                                                       |
+|--------------------------------|--------------|--------------------------------------------------------------|
+| `BOOKREADER_IMAGES_ENABLED`    | auto-detect  | `1` to force inline images on; `0` to force off.            |
+| `BOOKREADER_READING_WIDTH`     | `110`        | Single-column reading width in cells (60–200).              |
+| `BOOKREADER_THEME`             | `dark`       | `dark`, `light`, or `sepia`.                                |
+| `BOOKREADER_TWO_PAGE_DEFAULT`  | `0`          | `1` to launch in two-page mode.                             |
+| `BOOKREADER_LINE_SCROLL`       | `1`          | Lines per `j`/`k` press (1–10).                             |
+| `BOOKREADER_PAGE_SCROLL_PCT`   | `90`         | Page jump as a percentage of viewport (10–100).             |
+| `BOOKREADER_SHOW_TOC_DEFAULT`  | `1`          | `0` to start with the TOC sidebar collapsed.                |
+| `NO_COLOR`                     | unset        | Honoured by `textual` — falls back to a safe palette.       |
+
+### File locations (XDG)
+
+| What                       | Default path                                         |
+|----------------------------|------------------------------------------------------|
+| Library DB                 | `~/.local/share/bookreader/library.db`               |
+| Reading-position cache     | `~/.local/state/bookreader/positions.json`           |
+| JSON bookmark fallback     | `~/.local/state/bookreader/bookmarks.json`           |
+| Log file (rotating)        | `~/.local/state/bookreader/log/bookreader.log`       |
+
+Honors `XDG_DATA_HOME` and `XDG_STATE_HOME` if set. Safe to back up the whole `~/.local/share/bookreader/` directory.
+
+### Upgrading from 0.x JSON store
+
+On first launch the library service migrates `~/.local/state/bookreader/positions.json` entries that match books already added; the JSON is renamed to `positions.json.migrated` once data flows. No manual step needed.
+
+## Troubleshooting
+
+**`bookreader: command not found`**
+You installed with `pip install bookreader-tui` directly into your system Python and PEP 668 blocked it, or you installed into a venv that isn't activated. Use `pipx install bookreader-tui` (recommended) or activate the venv.
+
+**Images render as `[image: alt]` placeholders even in kitty**
+Check that the env var hasn't been turned off: `echo $BOOKREADER_IMAGES_ENABLED`. If it's set to `0`, unset it or set to `1`. Inside the reader, press `I` to force-toggle. If it still doesn't render, your kitty session may be inside `tmux`/`screen` without graphics passthrough — start kitty directly to test.
+
+**Images render at low quality**
+The image is being upscaled into a column that's too narrow. Raise `BOOKREADER_READING_WIDTH` (try `140` or `160`) and re-launch.
+
+**`q` quits while I'm typing in a wishlist title**
+It shouldn't — modals isolate keystrokes. If you hit this, please [open an issue](https://github.com/prajwalmahajan101/BookReader/issues/new) with your terminal + Textual version.
+
+**My EPUB has no images at all**
+Confirm: `bookreader list` shows it. Then `python -c "from ebooklib import epub; b=epub.read_epub('path.epub'); print(sum(1 for i in b.get_items() if i.media_type.startswith('image/')))"`. If that prints `0`, the EPUB itself has no embedded images.
+
+**Library got corrupted**
+Stop the app. Move the file aside: `mv ~/.local/share/bookreader/library.db ~/.local/share/bookreader/library.db.bak`. Re-launch — a fresh library is created. Use `bookreader add <path>` to repopulate.
+
+**I want a clean slate**
+`rm -rf ~/.local/share/bookreader ~/.local/state/bookreader`. Removes the library, positions, and logs.
+
+## Development
+
+```bash
+git clone https://github.com/prajwalmahajan101/BookReader
+cd BookReader
+python -m venv .venv && source .venv/bin/activate
+pip install -e ".[dev]"
+pre-commit install
+
+# The full local gate (matches CI):
+pytest -q
+ruff format --check . && ruff check src/ tests/
+mypy src/
+```
+
+### Project layout
 
 ```
 src/bookreader/
-  core/      # config, paths, logging, exceptions
-  epub/      # parsing + rendering (no UI)
-  state/     # Phase-1 JSON position store
-  library/   # SQLite library (Phase 2): db, repo, service, migrations
+  core/      # config, paths, logging, exceptions    (no I/O)
+  epub/      # parsing + rendering                   (no UI, no DB)
+  state/     # JSON position + bookmark fallback
+  library/   # SQLite library: db, repo, service, migrations
   ui/        # Textual app, screens, widgets, themes
+tests/
+  unit/         # parsers, renderer, config
+  integration/  # service + screen pilot tests
+docs/adr/    # architecture decision records
 ```
 
-## Storage
+UI never imports a repository directly — it talks to a service.
 
-| What                       | Where                                      |
-|----------------------------|--------------------------------------------|
-| Library DB                 | `<XDG_DATA_HOME>/bookreader/library.db`    |
-| Phase-1 positions JSON     | `<XDG_STATE_HOME>/bookreader/positions.json` |
-| Log file (rotating)        | `<XDG_STATE_HOME>/bookreader/log/bookreader.log` |
+### Releasing
 
-Upgrading from Phase 1: on first launch the library service migrates
-`positions.json` entries that match books already added; the JSON is
-renamed to `positions.json.migrated` once data flows.
+Tag-driven, fully automated:
 
-## Environment overrides
+```bash
+# Bump version in src/bookreader/__init__.py and pyproject.toml,
+# add a [X.Y.Z] section to CHANGELOG.md, commit, then:
+git tag -a vX.Y.Z -m "Release X.Y.Z"
+git push origin main vX.Y.Z
+```
 
-| Variable                       | Effect                                                       |
-|--------------------------------|--------------------------------------------------------------|
-| `BOOKREADER_IMAGES_ENABLED`    | `1` forces inline images on; `0` forces off. Defaults to auto-detect in kitty / iTerm2 / WezTerm. |
-| `BOOKREADER_READING_WIDTH`     | Single-column reading width in cells (60–200, default 110).  |
-| `BOOKREADER_THEME`             | `dark`, `light`, `sepia`.                                    |
-| `BOOKREADER_TWO_PAGE_DEFAULT`  | `1` to start in two-page mode.                               |
-| `NO_COLOR`                     | Honoured by `textual` — falls back to safe color set.        |
+`.github/workflows/release.yml` builds the sdist + wheel, verifies the tag matches `pyproject.toml`, publishes to PyPI via trusted publishing, and creates a GitHub Release with the CHANGELOG-extracted notes and dist files attached.
 
-## Status
+## Project background
 
-Phase 1 (Reader Core) + Phase 1.5 (Two-page mode) + Phase 2 (Library) +
-Phase 3 (Polish — bookmarks, sessions, phantom books, inline images) +
-Phase 4 (Library Curation — collections + wishlist overview screens)
-all live. ADRs at `docs/adr/`.
+Built solo as a phase-driven exercise: each phase is a feature branch with its own ADR, atomic commits, and merge-clean history.
 
-### Phase 4 highlights
+- **Phase 1** — Reader Core
+- **Phase 1.5** — Two-page mode
+- **Phase 2** — SQLite Library
+- **Phase 3** — Polish (bookmarks, sessions, phantom books, inline images)
+- **Phase 4** — Library curation (collections + wishlist overview)
+- **Phase 5** — UX polish + first PyPI release as `bookreader-tui`
 
-- `C` on the library opens a **Collections** overview screen — every book
-  grouped by collection, title + path per row.
-- `W` opens a **Wishlist** overview — every phantom (TBR) entry as
-  title + author; `d` removes.
-- Both screens are integration-tested (`tests/integration/test_library_modals.py`).
-
-### Phase 3 highlights
-
-- `bookreader add --wishlist --title …` tracks TBR titles before you
-  have the EPUB; `bookreader attach <id> path.epub` promotes them.
-- `m` / `'` add and list per-book bookmarks (with optional notes).
-- Reading time per book accrues automatically; see it in the library
-  "Time" column or via `bookreader stats`.
-- Inline kitty/sixel images render when `BOOKREADER_IMAGES_ENABLED=1`
-  is set and the terminal supports a graphics protocol. Otherwise a
-  `[image: alt]` placeholder takes the figure's place. Paged mode
-  (`2`) always uses the placeholder.
-
-## Changelog
-
-See [CHANGELOG.md](./CHANGELOG.md) for the version-by-version history.
+Architecture decisions live in [`docs/adr/`](./docs/adr/). Version-by-version notes in [`CHANGELOG.md`](./CHANGELOG.md).
 
 ## License
 
