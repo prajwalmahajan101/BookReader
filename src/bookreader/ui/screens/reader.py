@@ -110,6 +110,7 @@ class ReaderScreen(Screen[None]):
         Binding("c", "toggle_complete", "Mark done"),
         Binding("C,shift+c", "open_collections", "Collections"),
         Binding("W,shift+w", "open_wishlist", "Wishlist"),
+        Binding("I,shift+i", "toggle_images", "Images"),
         Binding("g", "scroll_home", "Top", show=False),
         Binding("G,shift+g", "scroll_end", "Bottom", show=False),
         Binding("T,shift+t", "cycle_theme", "Theme"),
@@ -431,6 +432,17 @@ class ReaderScreen(Screen[None]):
                 )
 
         self.app.push_screen(CollectionsScreen(groups), _after)
+
+    def action_toggle_images(self) -> None:
+        """Flip inline image rendering and repaint the current chapter."""
+        chapter_view = self.query_one("#chapter", ChapterView)
+        new_value = not chapter_view.images_enabled
+        chapter_view.set_images_enabled(new_value)
+        self._paint_current_chapter()
+        self.notify(
+            "Inline images ON" if new_value else "Inline images OFF",
+            timeout=2,
+        )
 
     def action_open_wishlist(self) -> None:
         """Push the Wishlist overview modal on top of the reader."""

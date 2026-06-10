@@ -50,10 +50,20 @@ class ChapterView(Vertical):
         super().__init__(id=id)
         self._settings = load_settings()
         self._book: Book | None = None
+        self._last_chapter: Chapter | None = None
 
     def attach_book(self, book: Book) -> None:
         """Tell the view which book it belongs to (for image resolution)."""
         self._book = book
+
+    @property
+    def images_enabled(self) -> bool:
+        """Whether inline image rendering is currently active."""
+        return self._settings.images_enabled
+
+    def set_images_enabled(self, value: bool) -> None:
+        """Flip the in-memory image toggle. Caller should repaint."""
+        self._settings.images_enabled = value
 
     def show_chapter(self, chapter: Chapter) -> None:
         """Replace contents with a fresh render of *chapter*.
