@@ -68,16 +68,24 @@ class PagedView(Vertical):
         height: 1fr;
         layout: horizontal;
     }
+    /* The columns flow their children top-to-bottom. ``height: auto``
+     * lets each Static / Image claim its natural height (Image inside a
+     * fixed-height parent otherwise collapses to zero rows). The outer
+     * .paged-spread bounds the visible space at the viewport height,
+     * and overflow on the column is clipped via the parent's layout. */
     PagedView .paged-column {
         width: 1fr;
-        height: 1fr;
+        height: auto;
         padding: 0 1;
-        overflow: hidden;
     }
     PagedView .paged-gutter {
         width: 4;
         height: 1fr;
     }
+    /* Mirror ChapterView's natural-size strategy that we already
+     * verified renders inline images in kitty: width auto + max-width
+     * 100% so small EPUB figures stay at native size and large ones
+     * scale down to the column. */
     PagedView Image, PagedView AutoImage {
         width: auto;
         height: auto;
@@ -106,6 +114,15 @@ class PagedView(Vertical):
     def attach_book(self, book: Book) -> None:
         """Provide the book context so images can be resolved."""
         self._book = book
+
+    @property
+    def images_enabled(self) -> bool:
+        """Whether inline image rendering is currently active."""
+        return self._settings.images_enabled
+
+    def set_images_enabled(self, value: bool) -> None:
+        """Flip the in-memory image toggle. Caller should repaint."""
+        self._settings.images_enabled = value
 
     def show_chapter(self, chapter: Chapter, *, at_last_page: bool = False) -> None:
         """Decompose *chapter* into blocks, paginate, mount the spread."""

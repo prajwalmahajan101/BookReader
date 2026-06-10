@@ -483,10 +483,17 @@ class ReaderScreen(Screen[None]):
         self.app.push_screen(CollectionsScreen(groups), _after)
 
     def action_toggle_images(self) -> None:
-        """Flip inline image rendering and repaint the current chapter."""
+        """Flip inline image rendering and repaint the current chapter.
+
+        Both views own their own Settings copy (they were instantiated
+        independently), so flip the toggle on each. A single repaint
+        afterward catches whichever mode is currently visible.
+        """
         chapter_view = self.query_one("#chapter", ChapterView)
+        paged_view = self.query_one("#paged", PagedView)
         new_value = not chapter_view.images_enabled
         chapter_view.set_images_enabled(new_value)
+        paged_view.set_images_enabled(new_value)
         self._paint_current_chapter()
         self.notify(
             "Inline images ON" if new_value else "Inline images OFF",
