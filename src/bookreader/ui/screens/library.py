@@ -150,6 +150,7 @@ class LibraryScreen(Screen[None]):
         Binding("A,shift+a", "add_wishlist", "Wishlist"),
         Binding("C,shift+c", "open_collections", "Collections"),
         Binding("W,shift+w", "open_wishlist", "Wishlist list"),
+        Binding("w", "wishlist_hint", show=False),
         Binding("d,delete", "remove_book", "Remove"),
         Binding("c", "toggle_complete", "Mark done"),
         Binding("i,enter", "open_book", "Open"),
@@ -371,6 +372,15 @@ class LibraryScreen(Screen[None]):
             self._reload()
 
         self.app.push_screen(screen, _after)
+
+    def action_wishlist_hint(self) -> None:
+        """Lowercase ``w`` is unbound — nudge users to the real shortcut.
+
+        Common muscle-memory mistake: ``c`` toggles completion, so users
+        naturally expect ``w`` to open the wishlist. Spell it out instead
+        of silently doing nothing.
+        """
+        self.notify("Press Shift+W to open the wishlist", timeout=2)
 
     def action_remove_book(self) -> None:
         """Remove the highlighted book."""
