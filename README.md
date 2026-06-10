@@ -1,12 +1,17 @@
 # BookReader
 
+[![PyPI](https://img.shields.io/pypi/v/bookreader-tui.svg)](https://pypi.org/project/bookreader-tui/)
+[![Python](https://img.shields.io/pypi/pyversions/bookreader-tui.svg)](https://pypi.org/project/bookreader-tui/)
+[![License](https://img.shields.io/pypi/l/bookreader-tui.svg)](./LICENSE)
 [![test](https://github.com/prajwalmahajan101/BookReader/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/prajwalmahajan101/BookReader/actions/workflows/test.yml)
 
 > A terminal EPUB reader and personal library, built with [Textual](https://textual.textualize.io/) — for people who'd rather read in their terminal than launch a desktop app.
 
-BookReader opens any EPUB in a focused two-column or two-page TUI, remembers where you left off, indexes everything you've added into a small SQLite library, and tracks per-book reading time and bookmarks. Inline kitty / sixel image rendering is on by an environment toggle when your terminal supports a graphics protocol; otherwise figures fall back to `[image: alt]` placeholders.
+![BookReader theme picker](docs/screenshots/theme-picker.png)
 
-Built solo as a phase-driven exercise: each phase is a feature branch with its own ADR, atomic commits, and merge-clean history. Currently shipped: **Phase 1 (Reader Core)**, **Phase 1.5 (Two-page mode)**, **Phase 2 (SQLite Library with one-shot migration from the Phase-1 JSON store)**, **Phase 3 (Polish — bookmarks, sessions, phantom / wishlist books, inline images)**.
+BookReader opens any EPUB in a focused two-column or two-page TUI, remembers where you left off, indexes everything you've added into a small SQLite library, and tracks per-book reading time and bookmarks. Inline `kitty` / `iTerm2` / `sixel` image rendering is auto-enabled when your terminal advertises a graphics protocol; otherwise figures fall back to `[image: alt]` placeholders.
+
+Built solo as a phase-driven exercise: each phase is a feature branch with its own ADR, atomic commits, and merge-clean history. Currently shipped: **Phase 1 (Reader Core)**, **Phase 1.5 (Two-page mode)**, **Phase 2 (SQLite Library)**, **Phase 3 (Polish — bookmarks, sessions, phantom / wishlist books, inline images)**, **Phase 4 (Library curation — collections + wishlist overview)**.
 
 ## How it's built
 
@@ -16,7 +21,19 @@ Built solo as a phase-driven exercise: each phase is a feature branch with its o
 - **Async-first** — `pytest-asyncio` with `asyncio_mode = auto`.
 - **Commit discipline** — conventional commits, atomic, on `feature/phaseN_<topic>` branches; `main` is always releasable. History stays linear: each phase is its own feature branch, fast-forward-merged into main with atomic conventional commits.
 
-## Install (development)
+## Install
+
+From PyPI:
+
+```bash
+pip install bookreader-tui
+bookreader path/to/book.epub
+```
+
+The PyPI package name is `bookreader-tui` (the bare `bookreader` was
+taken); the import path and the console script are still `bookreader`.
+
+### Development install
 
 ```bash
 python -m venv .venv
@@ -55,6 +72,10 @@ bookreader stats                      # minutes read per book
 | `2`           | Toggle two-page mode    |
 | `m`           | Add a bookmark (with optional note) |
 | `'`           | List bookmarks — Enter jumps |
+| `c`           | Toggle completion of the current book |
+| `C` (shift+c) | Open Collections overview from inside the reader |
+| `W` (shift+w) | Open Wishlist overview from inside the reader |
+| `I` (shift+i) | Toggle inline image rendering at runtime |
 | `g` / `G`     | Top / bottom of chapter |
 | `T`           | Cycle theme (dark/light/sepia) |
 | `?`           | Show key hints          |
@@ -101,6 +122,16 @@ Upgrading from Phase 1: on first launch the library service migrates
 `positions.json` entries that match books already added; the JSON is
 renamed to `positions.json.migrated` once data flows.
 
+## Environment overrides
+
+| Variable                       | Effect                                                       |
+|--------------------------------|--------------------------------------------------------------|
+| `BOOKREADER_IMAGES_ENABLED`    | `1` forces inline images on; `0` forces off. Defaults to auto-detect in kitty / iTerm2 / WezTerm. |
+| `BOOKREADER_READING_WIDTH`     | Single-column reading width in cells (60–200, default 110).  |
+| `BOOKREADER_THEME`             | `dark`, `light`, `sepia`.                                    |
+| `BOOKREADER_TWO_PAGE_DEFAULT`  | `1` to start in two-page mode.                               |
+| `NO_COLOR`                     | Honoured by `textual` — falls back to safe color set.        |
+
 ## Status
 
 Phase 1 (Reader Core) + Phase 1.5 (Two-page mode) + Phase 2 (Library) +
@@ -127,6 +158,10 @@ all live. ADRs at `docs/adr/`.
   is set and the terminal supports a graphics protocol. Otherwise a
   `[image: alt]` placeholder takes the figure's place. Paged mode
   (`2`) always uses the placeholder.
+
+## Changelog
+
+See [CHANGELOG.md](./CHANGELOG.md) for the version-by-version history.
 
 ## License
 
