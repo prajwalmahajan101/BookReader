@@ -48,6 +48,14 @@ class PagedView(Static):
     def show_chapter(self, chapter: Chapter, *, at_last_page: bool = False) -> None:
         """Render *chapter* and reset the page cursor.
 
+        Images become text-only ``[image: alt]`` placeholders here — the
+        two-column pagination math needs a flat Text, and mounting Image
+        widgets between paragraphs would break column alignment. A
+        future Phase 5.2 will swap to a block-based pagination that can
+        spread an image across both pages; for now the reader screen
+        nudges the user toward scroll mode (``2``) when a chapter has
+        real images.
+
         Args:
             chapter: The chapter to display.
             at_last_page: If true, start at the final spread (used when

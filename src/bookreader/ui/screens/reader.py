@@ -347,15 +347,39 @@ class ReaderScreen(Screen[None]):
             toc.focus()
 
     def action_toggle_paged(self) -> None:
-        """Toggle between scroll and two-page reading modes."""
+        """Toggle between scroll and two-page reading modes.
+
+        When the user enters paged mode on a chapter that contains
+        images, surface the trade-off — paged mode shows placeholders
+        because column pagination can't carry mounted image widgets.
+        """
         self._save_position()
         self._mode = "paged" if self._mode == "scroll" else "scroll"
         self._apply_mode_classes()
         # Force the paged view to re-paginate against the new visible size.
         if self._mode == "paged":
             self.query_one("#paged", PagedView).refresh(layout=True)
+            if self._current_chapter_has_images():
+                self.notify(
+                    "Paged mode shows [image: alt] placeholders. "
+                    "Press 2 to return to scroll mode for inline images.",
+                    timeout=5,
+                )
         self.call_after_refresh(self._refresh_status)
         self.notify(f"mode: {self._mode}", timeout=2)
+
+    def _current_chapter_has_images(self) -> bool:
+        """True when the active chapter has any resolved image blocks.
+
+        Cheap check — we already parse the chapter for the scroll view;
+        re-checking the raw HTML for an ``<img>`` tag is a faster proxy
+        than re-running ``render_chapter_blocks`` here.
+        """
+        try:
+            chapter = self._book.chapters[self._chapter_index]
+        except (IndexError, AttributeError):
+            return False
+        return "<img" in chapter.html.lower()
 
     def action_cycle_theme(self) -> None:
         """Cycle dark → light → sepia → dark."""
