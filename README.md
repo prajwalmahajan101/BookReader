@@ -7,9 +7,20 @@
 
 > A terminal EPUB reader and personal library, built with [Textual](https://textual.textualize.io/).
 
-![BookReader theme picker](https://raw.githubusercontent.com/prajwalmahajan101/BookReader/main/docs/screenshots/theme-picker.png)
+![bookreader-tui library screen](https://raw.githubusercontent.com/prajwalmahajan101/BookReader/main/docs/screenshots/library.svg)
 
 Open an EPUB in a focused two-column or two-page TUI, remember where you left off, organize what you've read into a small SQLite library, and render figures inline in `kitty`, `iTerm2`, `WezTerm`, or any sixel-capable terminal — automatically, with placeholders elsewhere.
+
+```bash
+pipx install bookreader-tui && bookreader path/to/book.epub
+```
+
+## Why bookreader-tui?
+
+- **vs Calibre** — no Qt, no GUI process, no separate viewer. Lives in your terminal where the rest of your workflow already is.
+- **vs `epy`** — full library: collections, ratings, wishlist, reading-time stats, bookmarks with notes, multi-book session continuity.
+- **vs `mdcat` / piping to a pager** — proper EPUB rendering (chapters, TOC, two-page mode, inline images) instead of a flat text dump.
+- **vs reading on your phone** — keyboard-driven, distraction-free, themed, scriptable. Your reading position syncs by EPUB identifier so the same book at a different path resumes in the same place.
 
 ## Features
 
@@ -109,6 +120,12 @@ Anything else (e.g. plain `xterm`, `gnome-terminal`, `Terminal.app`, tmux withou
 ### Toggle at runtime
 
 Press **`I`** inside the reader to flip images on/off mid-session — useful for comparing or when an image is breaking your layout.
+
+## Screenshots
+
+| Scroll mode | Two-page spread |
+|---|---|
+| ![reader](https://raw.githubusercontent.com/prajwalmahajan101/BookReader/main/docs/screenshots/reader.svg) | ![paged reader](https://raw.githubusercontent.com/prajwalmahajan101/BookReader/main/docs/screenshots/reader-paged.svg) |
 
 ## Key bindings
 
